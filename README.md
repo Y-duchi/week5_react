@@ -1,4 +1,4 @@
-# Week5 Mini React
+<img width="1408" height="768" alt="image" src="https://github.com/user-attachments/assets/1dde713d-519b-4cb5-ab73-babd3392809c" /># Week5 Mini React
 
 React 없이 **Component**, **Hooks**, **State**, **Virtual DOM + Diff + Patch**의 핵심 흐름을 직접 구현한 Mini React 프로젝트입니다.
 
@@ -16,6 +16,7 @@ React 없이 **Component**, **Hooks**, **State**, **Virtual DOM + Diff + Patch**
 ---
 
 ## 주요 구현 내용
+<img width="1408" height="768" alt="image" src="https://github.com/user-attachments/assets/5b7dc604-c358-4c4b-8a99-8d6b66e8672d" />
 
 ### 1. FunctionComponent
 함수형 컴포넌트를 감싸는 `FunctionComponent` 클래스를 직접 구현했습니다.
