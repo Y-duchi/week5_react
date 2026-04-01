@@ -1,0 +1,139 @@
+:root {
+  --bg: #f5f7fb;
+  --card: #ffffff;
+  --text: #172034;
+  --muted: #5d678a;
+  --line: #d7deef;
+  --primary: #2a63ff;
+  --danger: #eb4a4a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  background: linear-gradient(130deg, #f8faff 0%, #eef4ff 48%, #fbfdff 100%);
+  color: var(--text);
+}
+
+.page {
+  max-width: 760px;
+  margin: 24px auto;
+  padding: 12px;
+}
+
+.app-root {
+  background: var(--card);
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(33, 52, 105, 0.08);
+}
+
+.todo-shell {
+  display: grid;
+  gap: 14px;
+}
+
+.todo-header h1 {
+  margin: 0;
+  font-size: 1.45rem;
+}
+
+.todo-subtitle {
+  margin: 5px 0 0;
+  color: var(--muted);
+}
+
+.card {
+  display: grid;
+  gap: 8px;
+}
+
+.composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+}
+
+.composer input[type="text"] {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.98rem;
+}
+
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.danger {
+  background: #fff1f1;
+  color: var(--danger);
+}
+
+.filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filters button {
+  background: #f0f3ff;
+  color: #2c3f84;
+}
+
+.filters .active {
+  background: #1938a3;
+  color: #fff;
+}
+
+.todo-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.todo-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.item-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.is-done span {
+  color: #9da5ba;
+  text-decoration: line-through;
+}
+
+.empty-list,
+.hint {
+  color: var(--muted);
+}
+
+.footnote {
+  margin: 0;
+  color: var(--muted);
+}

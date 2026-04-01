@@ -1,0 +1,8 @@
+{
+  "name": "react-week5-mini",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
