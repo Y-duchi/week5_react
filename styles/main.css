@@ -75,7 +75,10 @@ pre {
 .hero-panel,
 .hero-copy,
 .hero-stats,
-.requirement-grid,
+.hero-check-row,
+.hero-steps,
+.flow-grid,
+.requirement-list,
 .workspace-layout,
 .demo-stack,
 .inspector-column,
@@ -89,7 +92,7 @@ pre {
 .memo-grid,
 .hook-grid,
 .hero-stats,
-.identity-row {
+.pill-row {
   display: grid;
   gap: 16px;
 }
@@ -157,28 +160,17 @@ pre {
 }
 
 .hero-text,
-.hero-guide,
+.hero-step-text,
+.demo-hint,
+.workspace-guide-text,
 .card-summary,
+.requirement-proof,
 .editor-hint,
 .task-note-preview,
 .runtime-meta p,
 .empty-text {
   margin: 0;
   color: var(--muted);
-}
-
-.hero-guide {
-  padding: 12px 14px;
-  border-radius: var(--radius-md);
-  border: 1px solid #efd4c7;
-  background: #fff4ea;
-  color: var(--accent-dark);
-  font-weight: 600;
-}
-
-.identity-row {
-  grid-template-columns: repeat(4, max-content);
-  align-items: center;
 }
 
 .identity-chip,
@@ -191,6 +183,52 @@ pre {
   border: 1px solid var(--line);
   background: #f5eee5;
   font-size: 0.84rem;
+}
+
+.hero-check-row {
+  grid-template-columns: repeat(2, max-content);
+}
+
+.hero-steps {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.hero-step-card,
+.flow-card,
+.workspace-guide,
+.requirement-row,
+.state-pill {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--panel-strong);
+}
+
+.hero-step-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+}
+
+.hero-step-number,
+.flow-number,
+.workspace-guide-number,
+.requirement-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 800;
+}
+
+.hero-step-title,
+.flow-title,
+.workspace-guide-title {
+  margin: 0;
+  font-size: 1.05rem;
 }
 
 .hero-stats,
@@ -215,26 +253,118 @@ pre {
   font-weight: 800;
 }
 
-.requirement-grid {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+.flow-panel {
+  display: grid;
+  gap: 14px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  background: linear-gradient(180deg, #fff7f0 0%, #fffdf9 100%);
+  box-shadow: var(--shadow);
+}
+
+.flow-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.flow-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.flow-text {
+  margin: 0;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.pill-row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.state-pill {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+}
+
+.state-pill-label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.state-pill-value {
+  font-size: 0.98rem;
+}
+
+.requirement-list {
   margin-top: 14px;
 }
 
-.requirement-card {
-  padding: 16px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--line);
-  background: #fffaf4;
+.requirement-row {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: auto minmax(0, 1fr) minmax(210px, 0.42fr);
+  align-items: start;
+  padding: 18px;
 }
 
-.card-summary {
-  margin-top: 8px;
+.requirement-copy {
+  display: grid;
+  gap: 8px;
 }
 
-.card-list,
+.requirement-proof {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  background: #f8f2eb;
+}
+
+.requirement-meta {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: #1f1f1f;
+  color: #faf7f2;
+}
+
+.requirement-label {
+  color: #b7b1a9;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.requirement-location {
+  font-size: 0.92rem;
+}
+
 .plain-list {
   margin: 12px 0 0;
   padding-left: 20px;
+}
+
+.plain-list--compact {
+  margin-top: 10px;
+}
+
+.workspace-guide {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 18px;
+  background: linear-gradient(180deg, #fff9f4 0%, #fffdf9 100%);
+}
+
+.workspace-guide-copy {
+  display: grid;
+  gap: 6px;
 }
 
 .composer-row {
@@ -352,6 +482,10 @@ pre {
   margin-top: 10px;
 }
 
+.task-note-preview {
+  min-height: 48px;
+}
+
 .editor-wrap {
   display: grid;
   gap: 10px;
@@ -424,18 +558,17 @@ pre {
 }
 
 @media (max-width: 1180px) {
-  .requirement-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .workspace-layout,
   .hero-panel,
-  .filter-row {
+  .filter-row,
+  .flow-grid,
+  .requirement-row {
     grid-template-columns: 1fr;
   }
 
-  .identity-row {
-    grid-template-columns: repeat(2, max-content);
+  .hero-check-row,
+  .hero-steps {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -446,6 +579,7 @@ pre {
   }
 
   .hero-panel,
+  .flow-panel,
   .requirement-panel,
   .demo-card,
   .side-card,
@@ -454,13 +588,12 @@ pre {
     border-radius: 20px;
   }
 
-  .requirement-grid,
   .task-grid,
   .hero-stats,
   .summary-row,
   .memo-grid,
   .hook-grid,
-  .identity-row,
+  .pill-row,
   .composer-row,
   .task-actions {
     grid-template-columns: 1fr;

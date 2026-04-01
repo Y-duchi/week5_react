@@ -9,6 +9,29 @@ function statChip(label, value) {
   );
 }
 
+function statePill(label, value) {
+  return h(
+    "article",
+    { className: "state-pill" },
+    h("span", { className: "state-pill-label" }, label),
+    h("strong", { className: "state-pill-value" }, value),
+  );
+}
+
+function sectionGuide(number, title, text) {
+  return h(
+    "section",
+    { className: "workspace-guide" },
+    h("span", { className: "workspace-guide-number" }, number),
+    h(
+      "div",
+      { className: "workspace-guide-copy" },
+      h("h2", { className: "workspace-guide-title" }, title),
+      h("p", { className: "workspace-guide-text" }, text),
+    ),
+  );
+}
+
 export function HeaderPanel({ profile, totalTasks, completedTasks }) {
   return h(
     "section",
@@ -17,24 +40,44 @@ export function HeaderPanel({ profile, totalTasks, completedTasks }) {
       "div",
       { className: "hero-copy" },
       h("p", { className: "eyebrow" }, `${profile.course} / ${profile.stage} / ${profile.event}`),
-      h("h1", { className: "hero-title" }, "Mini React 구현 데모"),
+      h("h1", { className: "hero-title" }, "클릭해서 설명하는 Mini React"),
       h(
         "p",
         { className: "hero-text" },
-        "이 페이지는 문서를 읽기 위한 화면이 아니라, 우리가 직접 구현한 React-like 엔진이 실제로 state, hooks, diff, patch로 동작한다는 걸 보여주는 데모입니다.",
-      ),
-      h(
-        "p",
-        { className: "hero-guide" },
-        "보는 순서: 1) 작업 추가 2) 완료 토글 3) 메모 수정 4) 오른쪽 패널에서 root state, hooks 배열, diff / patch 로그 확인",
+        "왼쪽에서 작업을 추가하거나 완료 처리하면, 오른쪽에서 root state, hooks, diff / patch가 같이 바뀌는 모습을 바로 설명할 수 있습니다.",
       ),
       h(
         "div",
-        { className: "identity-row" },
-        h("span", { className: "identity-chip" }, profile.name),
-        h("span", { className: "identity-chip" }, profile.email),
-        h("span", { className: "identity-chip" }, "Root-only hooks"),
-        h("span", { className: "identity-chip" }, "Stateless children"),
+        { className: "hero-check-row" },
+        h("span", { className: "identity-chip" }, "루트만 state"),
+        h("span", { className: "identity-chip" }, "자식은 props only"),
+        h("span", { className: "identity-chip" }, "hooks는 루트 전용"),
+        h("span", { className: "identity-chip" }, "diff / patch 실시간 확인"),
+      ),
+      h(
+        "div",
+        { className: "hero-steps" },
+        h(
+          "article",
+          { className: "hero-step-card" },
+          h("span", { className: "hero-step-number" }, "1"),
+          h("strong", { className: "hero-step-title" }, "작업 추가"),
+          h("p", { className: "hero-step-text" }, "input 값이 root state에 들어갑니다."),
+        ),
+        h(
+          "article",
+          { className: "hero-step-card" },
+          h("span", { className: "hero-step-number" }, "2"),
+          h("strong", { className: "hero-step-title" }, "완료 토글"),
+          h("p", { className: "hero-step-text" }, "tasks state가 바뀌고 visibleTasks가 다시 계산됩니다."),
+        ),
+        h(
+          "article",
+          { className: "hero-step-card" },
+          h("span", { className: "hero-step-number" }, "3"),
+          h("strong", { className: "hero-step-title" }, "오른쪽 확인"),
+          h("p", { className: "hero-step-text" }, "hooks 배열과 diff / patch 로그를 바로 설명합니다."),
+        ),
       ),
     ),
     h(
@@ -42,6 +85,56 @@ export function HeaderPanel({ profile, totalTasks, completedTasks }) {
       { className: "hero-stats" },
       statChip("전체 작업", String(totalTasks)),
       statChip("완료 작업", String(completedTasks)),
+      statChip("발표 포인트", "state / hooks / vdom"),
+    ),
+  );
+}
+
+export function FlowSnapshotPanel({ latestAction, stateFacts, computedFacts, effectMessage }) {
+  return h(
+    "section",
+    { className: "flow-panel" },
+    h("p", { className: "eyebrow" }, "지금 이 화면에서 설명할 것"),
+    h("h2", { className: "section-title" }, "클릭 -> state -> 계산 -> 반영"),
+    h(
+      "div",
+      { className: "flow-grid" },
+      h(
+        "article",
+        { className: "flow-card" },
+        h("span", { className: "flow-number" }, "1"),
+        h("strong", { className: "flow-title" }, "방금 한 행동"),
+        h("p", { className: "flow-text" }, latestAction),
+      ),
+      h(
+        "article",
+        { className: "flow-card" },
+        h("span", { className: "flow-number" }, "2"),
+        h("strong", { className: "flow-title" }, "바뀐 root state"),
+        h(
+          "div",
+          { className: "pill-row" },
+          ...stateFacts.map((fact) => statePill(fact.label, fact.value)),
+        ),
+      ),
+      h(
+        "article",
+        { className: "flow-card" },
+        h("span", { className: "flow-number" }, "3"),
+        h("strong", { className: "flow-title" }, "다시 계산된 값"),
+        h(
+          "div",
+          { className: "pill-row" },
+          ...computedFacts.map((fact) => statePill(fact.label, fact.value)),
+        ),
+      ),
+      h(
+        "article",
+        { className: "flow-card" },
+        h("span", { className: "flow-number" }, "4"),
+        h("strong", { className: "flow-title" }, "render 후 effect"),
+        h("p", { className: "flow-text" }, effectMessage),
+      ),
     ),
   );
 }
@@ -50,21 +143,28 @@ export function RequirementGrid({ cards }) {
   return h(
     "section",
     { className: "requirement-panel" },
-    h("p", { className: "eyebrow" }, "요구사항 체크"),
-    h("h2", { className: "section-title" }, "이 앱이 과제 조건을 만족하는 이유"),
+    h("p", { className: "eyebrow" }, "요구사항 대응"),
+    h("h2", { className: "section-title" }, "과제 조건을 어떻게 만족하는지 한 줄씩 확인"),
     h(
       "div",
-      { className: "requirement-grid" },
+      { className: "requirement-list" },
       ...cards.map((card) =>
         h(
           "article",
-          { className: "requirement-card" },
-          h("h3", { className: "card-title" }, card.title),
-          h("p", { className: "card-summary" }, card.summary),
+          { className: "requirement-row" },
+          h("span", { className: "requirement-index" }, card.index),
           h(
-            "ul",
-            { className: "card-list" },
-            ...card.bullets.map((bullet) => h("li", {}, bullet)),
+            "div",
+            { className: "requirement-copy" },
+            h("h3", { className: "card-title" }, card.title),
+            h("p", { className: "card-summary" }, card.summary),
+            h("p", { className: "requirement-proof" }, card.proof),
+          ),
+          h(
+            "div",
+            { className: "requirement-meta" },
+            h("span", { className: "requirement-label" }, "구현 위치"),
+            h("code", { className: "requirement-location" }, card.location),
           ),
         ),
       ),
@@ -72,12 +172,29 @@ export function RequirementGrid({ cards }) {
   );
 }
 
+export function DemoColumnIntro() {
+  return sectionGuide(
+    "1",
+    "왼쪽은 직접 눌러보는 영역",
+    "입력, 클릭, 선택으로 state를 바꾸고 화면이 다시 그려지는 걸 확인합니다.",
+  );
+}
+
+export function InspectorColumnIntro() {
+  return sectionGuide(
+    "2",
+    "오른쪽은 내부에서 벌어지는 일",
+    "같은 순간에 root state, hooks 배열, render 파이프라인, diff / patch가 어떻게 바뀌는지 보여줍니다.",
+  );
+}
+
 export function ComposerPanel({ draftTitle }) {
   return h(
     "section",
     { className: "demo-card" },
-    h("p", { className: "eyebrow" }, "실제 동작 앱"),
-    h("h2", { className: "section-title" }, "Jungle Weekly Build Board"),
+    h("p", { className: "eyebrow" }, "첫 번째 시연"),
+    h("h2", { className: "section-title" }, "작업을 하나 추가해 보세요"),
+    h("p", { className: "demo-hint" }, "입력값은 draftTitle state에 들어가고, 추가 버튼을 누르면 tasks state가 늘어납니다."),
     h(
       "div",
       { className: "composer-row" },
@@ -88,7 +205,7 @@ export function ComposerPanel({ draftTitle }) {
         h("input", {
           type: "text",
           value: draftTitle,
-          placeholder: "예: 테스트 페이지 발표 흐름 정리",
+          placeholder: "예: 발표 시연 순서 정리",
           "data-action": "update-draft-title",
           "aria-label": "새 작업 입력",
         }),
@@ -119,6 +236,9 @@ export function FilterBar({ options, activeFilter, stats }) {
   return h(
     "section",
     { className: "demo-card" },
+    h("p", { className: "eyebrow" }, "두 번째 시연"),
+    h("h2", { className: "section-title" }, "완료 상태와 필터를 바꿔보세요"),
+    h("p", { className: "demo-hint" }, "필터를 바꾸면 visibleTasks와 통계값(useMemo)이 다시 계산됩니다."),
     h(
       "div",
       { className: "filter-row" },
@@ -154,7 +274,9 @@ export function TaskListPanel({ tasks, selectedTaskId }) {
   return h(
     "section",
     { className: "demo-card" },
-    h("h2", { className: "section-title" }, "작업 목록"),
+    h("p", { className: "eyebrow" }, "세 번째 시연"),
+    h("h2", { className: "section-title" }, "카드를 선택하거나 완료 처리해 보세요"),
+    h("p", { className: "demo-hint" }, "선택한 카드와 완료 상태가 바뀌면 selectedTaskId, tasks state가 함께 변합니다."),
     tasks.length
       ? h(
           "div",
@@ -169,7 +291,11 @@ export function TaskListPanel({ tasks, selectedTaskId }) {
                 "div",
                 { className: "task-head" },
                 h("span", { className: "task-category" }, task.category),
-                h("span", { className: task.done ? "task-state is-done" : "task-state" }, task.done ? "DONE" : "TODO"),
+                h(
+                  "span",
+                  { className: task.done ? "task-state is-done" : "task-state" },
+                  task.done ? "DONE" : "TODO",
+                ),
               ),
               h("h3", { className: "task-title" }, task.title),
               h("p", { className: "task-note-preview" }, task.note || "메모 없음"),
@@ -218,13 +344,14 @@ export function TaskEditorPanel({ task }) {
   return h(
     "section",
     { className: "demo-card" },
-    h("h2", { className: "section-title" }, "선택한 작업 설명"),
+    h("p", { className: "eyebrow" }, "네 번째 시연"),
+    h("h2", { className: "section-title" }, "선택한 작업의 메모를 수정해 보세요"),
     task
       ? h(
           "div",
           { className: "editor-wrap" },
           h("p", { className: "editor-title" }, task.title),
-          h("p", { className: "editor-hint" }, "이 메모를 수정하면 루트 tasks state가 바뀌고 다시 렌더됩니다."),
+          h("p", { className: "editor-hint" }, "textarea를 수정하면 루트 tasks state가 바뀌고 다시 렌더됩니다."),
           h("textarea", {
             rows: 6,
             className: "note-field",
@@ -243,6 +370,7 @@ export function EngineInspector({
   memoValues,
   effectMessage,
   actionLog,
+  stateFacts,
   stateSnapshot,
   pipelineSteps,
 }) {
@@ -252,26 +380,37 @@ export function EngineInspector({
     h(
       "section",
       { className: "side-card" },
-      h("p", { className: "eyebrow" }, "컴포넌트 구조"),
-      h("h2", { className: "section-title" }, "자식은 모두 순수 함수"),
+      h("p", { className: "eyebrow" }, "핵심 제약"),
+      h("h2", { className: "section-title" }, "이 데모가 보여주는 구조"),
+      h(
+        "div",
+        { className: "pill-row" },
+        statePill("루트", "App 하나만 state 보유"),
+        statePill("자식", "모두 stateless"),
+        statePill("Hook", "루트에서만 허용"),
+      ),
       h(
         "ul",
-        { className: "plain-list" },
-        h("li", {}, "Root: App (FunctionComponent가 감쌉니다.)"),
-        ...childComponentNames.map((name) => h("li", {}, name)),
+        { className: "plain-list plain-list--compact" },
+        h("li", {}, `Root: App -> ${childComponentNames.join(", ")}`),
       ),
     ),
     h(
       "section",
       { className: "side-card" },
-      h("p", { className: "eyebrow" }, "루트 state"),
-      h("h2", { className: "section-title" }, "State Snapshot"),
+      h("p", { className: "eyebrow" }, "1. root state"),
+      h("h2", { className: "section-title" }, "한눈에 보는 현재 상태"),
+      h(
+        "div",
+        { className: "pill-row" },
+        ...stateFacts.map((fact) => statePill(fact.label, fact.value)),
+      ),
       h("pre", { className: "code-panel", id: "root-state-json" }, stateSnapshot),
     ),
     h(
       "section",
       { className: "side-card" },
-      h("p", { className: "eyebrow" }, "hooks 배열"),
+      h("p", { className: "eyebrow" }, "2. hooks 배열"),
       h("h2", { className: "section-title" }, "Hook Slots"),
       h(
         "div",
@@ -290,8 +429,8 @@ export function EngineInspector({
     h(
       "section",
       { className: "side-card" },
-      h("p", { className: "eyebrow" }, "useMemo / useEffect"),
-      h("h2", { className: "section-title" }, "계산값과 effect"),
+      h("p", { className: "eyebrow" }, "3. useMemo / useEffect"),
+      h("h2", { className: "section-title" }, "계산된 값과 effect"),
       h(
         "div",
         { className: "memo-grid" },
@@ -305,8 +444,8 @@ export function EngineInspector({
     h(
       "section",
       { className: "side-card" },
-      h("p", { className: "eyebrow" }, "setState 후 순서"),
-      h("h2", { className: "section-title" }, "렌더 파이프라인"),
+      h("p", { className: "eyebrow" }, "4. rerender 순서"),
+      h("h2", { className: "section-title" }, "setState 뒤에 무슨 일이 생기나"),
       h(
         "ol",
         { className: "plain-list plain-list--ordered" },
@@ -316,11 +455,11 @@ export function EngineInspector({
     h(
       "section",
       { className: "side-card" },
-      h("p", { className: "eyebrow" }, "최근 상호작용"),
+      h("p", { className: "eyebrow" }, "최근 액션"),
       h("h2", { className: "section-title" }, "Action Log"),
       h(
         "ul",
-        { className: "plain-list" },
+        { className: "plain-list plain-list--compact" },
         ...actionLog.map((entry) => h("li", {}, entry)),
       ),
     ),
@@ -331,7 +470,7 @@ export function RuntimePanelShell() {
   return h(
     "section",
     { className: "side-card runtime-card" },
-    h("p", { className: "eyebrow" }, "Virtual DOM Runtime"),
+    h("p", { className: "eyebrow" }, "5. Virtual DOM Runtime"),
     h("h2", { className: "section-title" }, "diff / patch 결과"),
     h(
       "div",

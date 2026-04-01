@@ -10,9 +10,12 @@ import { fragment, h } from "../runtime/h.js";
 import { useEffect, useMemo, useState } from "../runtime/hooks.js";
 import {
   ComposerPanel,
+  DemoColumnIntro,
   EngineInspector,
   FilterBar,
+  FlowSnapshotPanel,
   HeaderPanel,
+  InspectorColumnIntro,
   RequirementGrid,
   RuntimePanelShell,
   TaskEditorPanel,
@@ -71,6 +74,12 @@ export function App() {
     () => tasks.find((task) => task.id === selectedTaskId) ?? null,
     [tasks, selectedTaskId],
   );
+  const latestAction = useMemo(() => {
+    const current = actionLog[0] ?? "아직 상호작용이 없습니다.";
+    const parts = current.split(" - ");
+
+    return parts.length > 1 ? parts.slice(1).join(" - ") : current;
+  }, [actionLog]);
   const stateSnapshot = useMemo(
     () =>
       JSON.stringify(
@@ -87,6 +96,24 @@ export function App() {
         2,
       ),
     [draftTitle, filter, selectedTaskId, nextTaskId, tasks, actionLog.length],
+  );
+  const stateFacts = useMemo(
+    () => [
+      { label: "filter", value: filter },
+      { label: "selected", value: selectedTask?.title ?? "없음" },
+      { label: "tasks", value: `${tasks.length}개` },
+      { label: "done", value: `${stats.completed}개` },
+    ],
+    [filter, selectedTask?.title, tasks.length, stats.completed],
+  );
+  const computedFacts = useMemo(
+    () => [
+      { label: "visibleTasks", value: `${stats.visible}개` },
+      { label: "progress", value: `${stats.progress}%` },
+      { label: "openTasks", value: `${stats.open}개` },
+      { label: "draft", value: draftTitle || "(비어 있음)" },
+    ],
+    [draftTitle, stats.visible, stats.progress, stats.open],
   );
   const hookSlots = useMemo(
     () => [
@@ -209,6 +236,12 @@ export function App() {
         totalTasks: stats.total,
         completedTasks: stats.completed,
       }),
+      h(FlowSnapshotPanel, {
+        latestAction,
+        stateFacts,
+        computedFacts,
+        effectMessage,
+      }),
       h(RequirementGrid, {
         cards: requirementCards,
       }),
@@ -218,6 +251,7 @@ export function App() {
         h(
           "div",
           { className: "demo-stack" },
+          h(DemoColumnIntro),
           h(ComposerPanel, {
             draftTitle,
           }),
@@ -237,12 +271,14 @@ export function App() {
         h(
           "div",
           { className: "inspector-column" },
+          h(InspectorColumnIntro),
           h(EngineInspector, {
             childComponentNames,
             hookSlots,
             memoValues: stats,
             effectMessage,
             actionLog,
+            stateFacts,
             stateSnapshot,
             pipelineSteps,
           }),

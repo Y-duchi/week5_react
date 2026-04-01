@@ -4,7 +4,7 @@
 
 Week 3의 Virtual DOM / Diff / Patch를 바탕으로, Week 5 요구사항인 `FunctionComponent`, `useState`, `useEffect`, `useMemo`, 루트 전용 state 관리를 직접 구현한 Mini React 데모입니다.
 
-이 저장소의 목표는 "예쁜 화면"보다 "우리가 무엇을 구현했고 어떻게 동작하는지 한눈에 설명할 수 있는 화면"입니다.
+이 저장소의 목표는 "예쁜 화면"보다 "클릭 한 번으로 state, hooks, diff / patch를 바로 설명할 수 있는 화면"입니다.
 
 ## 이 데모에서 바로 설명할 수 있는 것
 
@@ -16,7 +16,15 @@ Week 3의 Virtual DOM / Diff / Patch를 바탕으로, Week 5 요구사항인 `Fu
 
 ## 화면 구성
 
-### 1. 요구사항 체크 카드
+### 1. 상단 요약
+
+- 무엇을 클릭하면 되는지
+- 과제 핵심 제약이 무엇인지
+- 발표 순서를 어떤 흐름으로 잡으면 되는지
+
+첫 화면에서 바로 보여줍니다.
+
+### 2. 요구사항 대응 리스트
 
 - Component
 - State
@@ -24,9 +32,9 @@ Week 3의 Virtual DOM / Diff / Patch를 바탕으로, Week 5 요구사항인 `Fu
 - Virtual DOM
 - Test Page
 
-각 카드가 현재 구현이 어떤 과제 조건을 만족하는지 요약합니다.
+각 항목마다 "무엇을 구현했고 어디에 있는지"를 한 줄씩 확인할 수 있습니다.
 
-### 2. 실제 동작 앱
+### 3. 실제 동작 앱
 
 `Jungle Weekly Build Board`에서 다음 상호작용을 바로 시연할 수 있습니다.
 
@@ -36,7 +44,7 @@ Week 3의 Virtual DOM / Diff / Patch를 바탕으로, Week 5 요구사항인 `Fu
 - 선택한 작업 메모 수정
 - 전체 상태 초기화
 
-### 3. 엔진 인스펙터
+### 4. 엔진 인스펙터
 
 - Root state snapshot
 - hooks 배열 슬롯
@@ -44,6 +52,13 @@ Week 3의 Virtual DOM / Diff / Patch를 바탕으로, Week 5 요구사항인 `Fu
 - `useEffect` 결과 메시지
 - 최근 action log
 - diff / patch 통계와 현재 VDOM HTML
+
+즉, 화면을 이렇게 설명하면 됩니다.
+
+1. 왼쪽에서 작업을 하나 추가합니다.
+2. 필터나 완료 상태를 바꿉니다.
+3. 오른쪽에서 root state와 hook slot 변화를 보여줍니다.
+4. 마지막으로 diff / patch 로그를 보여주며 전체 흐름을 설명합니다.
 
 ## 요구사항 대응
 
