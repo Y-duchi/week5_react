@@ -23,9 +23,6 @@ globalThis.queueMicrotask = queueMicrotask;
 
 const { mountApplication } = await import("../src/main.js");
 
-const root = document.querySelector("#app");
-const controller = mountApplication(root);
-
 function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
@@ -53,28 +50,34 @@ function type(selector, value) {
   node.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
 }
 
-click('[data-action="set-section"][data-section="requirements"]');
-type('[data-action="search-query"]', "hooks");
-click('[data-action="toggle-important"]');
-click('[data-action="next-step"]');
+const root = document.querySelector("#app");
+const controller = mountApplication(root);
+
+type('[data-action="update-draft-title"]', "QA 답변 정리");
+click('[data-action="add-task"]');
+await new Promise((resolve) => setTimeout(resolve, 0));
+click('[data-action="select-task"][data-id="4"]');
+type('[data-action="update-task-note"]', "실제 React와의 차이점도 같이 설명한다.");
+click('[data-action="toggle-task"][data-id="4"]');
+click('[data-action="set-filter"][data-filter="done"]');
 
 await new Promise((resolve) => setTimeout(resolve, 0));
 
 assert(
-  document.querySelector('[data-role="section-title"]')?.textContent === "요구사항",
-  "요구사항 섹션으로 이동하지 않았습니다.",
+  document.body.textContent?.includes("QA 답변 정리"),
+  "새 작업 텍스트가 화면에 보여야 합니다.",
 );
 assert(
-  document.querySelector("#pipeline-current-title")?.textContent === "3. diff + patch",
-  "렌더 단계가 기대값과 다릅니다.",
+  document.body.textContent?.includes("실제 React와의 차이점도 같이 설명한다."),
+  "수정한 메모가 보여야 합니다.",
 );
 assert(
-  Number(document.querySelector("#runtime-render-count")?.textContent ?? "0") >= 3,
-  "렌더 횟수가 증가하지 않았습니다.",
+  Number(document.querySelector("#runtime-render-count")?.textContent ?? "0") >= 4,
+  "렌더 횟수가 증가해야 합니다.",
 );
 assert(
-  document.body.textContent?.toLowerCase().includes("hooks"),
-  "검색 결과에 hooks 문구가 남지 않았습니다.",
+  document.querySelector("#root-state-json")?.textContent?.includes('"filter": "done"'),
+  "root state snapshot에 filter 상태가 보여야 합니다.",
 );
 
 console.log("PASS jsdom smoke");

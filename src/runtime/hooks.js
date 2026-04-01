@@ -1,8 +1,13 @@
 let activeComponent = null;
+let nestedComponentDepth = 0;
 
 function ensureActiveComponent(hookName) {
   if (!activeComponent) {
     throw new Error(`${hookName} can only be used while a FunctionComponent is rendering.`);
+  }
+
+  if (nestedComponentDepth > 0) {
+    throw new Error(`${hookName} can only be used in the root component.`);
   }
 
   return activeComponent;
@@ -10,14 +15,27 @@ function ensureActiveComponent(hookName) {
 
 export function runWithHooks(component, render) {
   const previousComponent = activeComponent;
+  const previousDepth = nestedComponentDepth;
   activeComponent = component;
   component.hookCursor = 0;
   component.pendingEffects = [];
+  nestedComponentDepth = 0;
 
   try {
     return render();
   } finally {
     activeComponent = previousComponent;
+    nestedComponentDepth = previousDepth;
+  }
+}
+
+export function withNestedComponent(render) {
+  nestedComponentDepth += 1;
+
+  try {
+    return render();
+  } finally {
+    nestedComponentDepth -= 1;
   }
 }
 

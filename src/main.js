@@ -95,14 +95,20 @@ function bindDelegatedEvents(container, getActions) {
     const actions = getActions();
 
     switch (target.dataset.action) {
-      case "set-section":
-        actions.setSection?.(target.dataset.section);
+      case "add-task":
+        actions.addTask?.(container.querySelector('[data-action="update-draft-title"]')?.value ?? "");
         break;
-      case "toggle-important":
-        actions.toggleImportant?.();
+      case "set-filter":
+        actions.setFilter?.(target.dataset.filter);
         break;
-      case "next-step":
-        actions.nextStep?.();
+      case "select-task":
+        actions.selectTask?.(target.dataset.id);
+        break;
+      case "toggle-task":
+        actions.toggleTask?.(target.dataset.id);
+        break;
+      case "remove-task":
+        actions.removeTask?.(target.dataset.id);
         break;
       case "reset-demo":
         actions.resetDemo?.();
@@ -122,8 +128,11 @@ function bindDelegatedEvents(container, getActions) {
     const actions = getActions();
 
     switch (target.dataset.action) {
-      case "search-query":
-        actions.searchQuery?.(target.value);
+      case "update-draft-title":
+        actions.updateDraftTitle?.(target.value);
+        break;
+      case "update-task-note":
+        actions.updateTaskNote?.(target.value);
         break;
       default:
         break;
@@ -140,6 +149,12 @@ function bindDelegatedEvents(container, getActions) {
 }
 
 export function mountApplication(container) {
+  const existingController = container.__miniReactController;
+
+  if (existingController) {
+    existingController.destroy();
+  }
+
   const removeListeners = bindDelegatedEvents(container, getAppActions);
   const instance = new FunctionComponent(App, {}, {
     onCommit(commit, component) {
@@ -150,13 +165,21 @@ export function mountApplication(container) {
   instance.mount(container);
   syncRuntimePanel(container, instance.lastCommit, instance);
 
-  return {
+  const controller = {
     instance,
     destroy() {
       removeListeners();
       instance.destroy();
+
+      if (container.__miniReactController === controller) {
+        delete container.__miniReactController;
+      }
     },
   };
+
+  container.__miniReactController = controller;
+
+  return controller;
 }
 
 if (typeof document !== "undefined") {

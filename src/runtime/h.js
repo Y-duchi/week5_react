@@ -1,3 +1,5 @@
+import { withNestedComponent } from "./hooks.js";
+
 function normalizeNode(node) {
   if (node == null || node === false) {
     return null;
@@ -70,7 +72,9 @@ export function h(tagNameOrComponent, props = {}, ...children) {
   const normalizedChildren = normalizeChildren(children);
 
   if (typeof tagNameOrComponent === "function") {
-    return normalizeNode(tagNameOrComponent({ ...props, children: normalizedChildren }));
+    return normalizeNode(
+      withNestedComponent(() => tagNameOrComponent({ ...props, children: normalizedChildren })),
+    );
   }
 
   return {

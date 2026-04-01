@@ -20,78 +20,79 @@ export function runBrowserTests(output) {
 
   const controller = mountApplication(sandbox);
 
+  function flush() {
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
   const tests = [
     {
-      name: "초기 섹션은 목적이다",
-      run() {
-        const title = sandbox.querySelector('[data-role="section-title"]');
-        assert(title?.textContent === "목적", "초기 섹션이 목적이어야 합니다.");
+      name: "초기 화면에 작업 목록이 보인다",
+      async run() {
+        const title = sandbox.querySelector(".task-title");
+        assert(title?.textContent?.includes("FunctionComponent"), "초기 작업 카드가 보여야 합니다.");
       },
     },
     {
-      name: "탭 클릭으로 요구사항 섹션으로 이동한다",
-      run() {
-        sandbox
-          .querySelector('[data-action="set-section"][data-section="requirements"]')
-          ?.click();
-
-        const title = sandbox.querySelector('[data-role="section-title"]');
-        assert(title?.textContent === "요구사항", "요구사항 탭으로 이동해야 합니다.");
-      },
-    },
-    {
-      name: "검색어 hooks로 문서가 필터링된다",
-      run() {
-        const input = sandbox.querySelector('[data-action="search-query"]');
-        input.value = "hooks";
+      name: "입력 후 작업 추가가 된다",
+      async run() {
+        const input = sandbox.querySelector('[data-action="update-draft-title"]');
+        input.value = "브라우저 테스트 발표 준비";
         input.dispatchEvent(new Event("input", { bubbles: true }));
+        sandbox.querySelector('[data-action="add-task"]')?.click();
+        await flush();
 
-        const text = sandbox.querySelector(".document-panel")?.textContent ?? "";
-        assert(text.toLowerCase().includes("hooks"), "검색 결과에 hooks 문구가 남아야 합니다.");
+        const text = sandbox.querySelector(".task-grid")?.textContent ?? "";
+        assert(text.includes("브라우저 테스트 발표 준비"), "새 작업이 목록에 추가되어야 합니다.");
       },
     },
     {
-      name: "핵심만 보기 토글이 동작한다",
-      run() {
-        const button = sandbox.querySelector('[data-action="toggle-important"]');
-        button?.click();
+      name: "완료 필터가 동작한다",
+      async run() {
+        sandbox.querySelector('[data-action="set-filter"][data-filter="done"]')?.click();
+        await flush();
+
+        const text = sandbox.querySelector(".task-grid")?.textContent ?? "";
+        assert(text.includes("diff / patch 로그 확인"), "완료 작업 카드가 보여야 합니다.");
+      },
+    },
+    {
+      name: "작업 선택 후 메모 수정이 된다",
+      async run() {
+        sandbox.querySelector('[data-action="set-filter"][data-filter="all"]')?.click();
+        sandbox.querySelector('[data-action="select-task"][data-id="1"]')?.click();
+        await flush();
+
+        const textarea = sandbox.querySelector('[data-action="update-task-note"]');
+        textarea.value = "mount 와 update 설명을 먼저 한다.";
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+        await flush();
 
         assert(
-          button?.getAttribute("aria-pressed") === "true",
-          "핵심만 보기 버튼이 활성화 상태여야 합니다.",
+          sandbox.querySelector('[data-action="update-task-note"]')?.value.includes("mount 와 update 설명을 먼저 한다."),
+          "메모가 수정되어야 합니다.",
         );
       },
     },
     {
-      name: "렌더 단계 넘기기가 파이프라인 제목을 바꾼다",
-      run() {
-        sandbox.querySelector('[data-action="next-step"]')?.click();
-
-        const stepTitle = sandbox.querySelector("#pipeline-current-title");
-        assert(
-          stepTitle?.textContent?.includes("2. render + Virtual DOM 생성"),
-          "다음 단계로 넘어가야 합니다.",
-        );
-      },
-    },
-    {
-      name: "런타임 패널에 렌더 횟수가 표시된다",
-      run() {
+      name: "런타임 패널에 렌더 횟수가 보인다",
+      async run() {
         const renderCount = Number(sandbox.querySelector("#runtime-render-count")?.textContent ?? "0");
         assert(renderCount >= 4, "상호작용 후 렌더 횟수가 증가해야 합니다.");
       },
     },
   ];
 
-  try {
-    tests.forEach((test) => {
-      test.run();
-      addResult(output, test.name, "PASS");
-    });
-  } catch (error) {
-    addResult(output, "브라우저 테스트", "FAIL", error.message);
-  } finally {
-    controller.destroy();
-    sandbox.remove();
-  }
+  (async () => {
+    try {
+      for (const test of tests) {
+        await test.run();
+        addResult(output, test.name, "PASS");
+      }
+    } catch (error) {
+      addResult(output, "브라우저 테스트", "FAIL", error.message);
+    } finally {
+      controller.destroy();
+      sandbox.remove();
+    }
+  })();
 }

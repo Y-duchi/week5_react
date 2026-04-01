@@ -1,76 +1,54 @@
 import {
-  assignmentSections,
-  engineHighlights,
-  learningTrail,
+  childComponentNames,
+  filterOptions,
+  initialTasks,
   pipelineSteps,
+  requirementCards,
   studentProfile,
 } from "../data/content.js";
 import { fragment, h } from "../runtime/h.js";
 import { useEffect, useMemo, useState } from "../runtime/hooks.js";
 import {
-  AssignmentDocument,
-  ControlPanel,
-  EnginePanel,
+  ComposerPanel,
+  EngineInspector,
+  FilterBar,
   HeaderPanel,
+  RequirementGrid,
   RuntimePanelShell,
+  TaskEditorPanel,
+  TaskListPanel,
 } from "./components.js";
 
 let appActions = {};
 
-function countNodes(nodes) {
-  return nodes.reduce(
-    (count, node) => count + 1 + countNodes(node.children ?? []),
-    0,
-  );
+export function filterTasks(tasks, filter) {
+  if (filter === "open") {
+    return tasks.filter((task) => !task.done);
+  }
+
+  if (filter === "done") {
+    return tasks.filter((task) => task.done);
+  }
+
+  return tasks;
 }
 
-function countImportantNodes(nodes) {
-  return nodes.reduce(
-    (count, node) => count + (node.important ? 1 : 0) + countImportantNodes(node.children ?? []),
-    0,
-  );
-}
-
-function matchesQuery(text, query) {
-  return text.toLowerCase().includes(query.toLowerCase());
-}
-
-function filterNodes(nodes, query, importantOnly) {
-  return nodes.reduce((filtered, node) => {
-    const children = filterNodes(node.children ?? [], query, importantOnly);
-    const queryMatch = !query || matchesQuery(node.text, query);
-    const importantMatch = !importantOnly || node.important;
-    const keepSelf = queryMatch && importantMatch;
-    const visibleChildren = query && queryMatch && !importantOnly ? node.children ?? [] : children;
-
-    if (keepSelf || visibleChildren.length > 0) {
-      filtered.push({
-        ...node,
-        children: visibleChildren,
-      });
-    }
-
-    return filtered;
-  }, []);
-}
-
-export function buildDocumentView(section, query, importantOnly) {
-  const visibleNodes = filterNodes(section.nodes, query.trim(), importantOnly);
+export function buildTaskStats(tasks, filter) {
+  const visibleTasks = filterTasks(tasks, filter);
+  const completed = tasks.filter((task) => task.done).length;
+  const open = tasks.length - completed;
+  const progress = tasks.length ? Math.round((completed / tasks.length) * 100) : 0;
 
   return {
-    ...section,
-    visibleNodes,
-    visibleCount: countNodes(visibleNodes),
-    totalCount: countNodes(section.nodes),
-    visibleImportantCount: countImportantNodes(visibleNodes),
+    total: tasks.length,
+    completed,
+    open,
+    visible: visibleTasks.length,
+    progress,
   };
 }
 
-function findSection(sectionId) {
-  return assignmentSections.find((section) => section.id === sectionId) ?? assignmentSections[0];
-}
-
-function createLog(message) {
+function formatLog(message) {
   return `${new Date().toLocaleTimeString("ko-KR")} - ${message}`;
 }
 
@@ -79,72 +57,146 @@ export function getAppActions() {
 }
 
 export function App() {
-  const [activeSection, setActiveSection] = useState(assignmentSections[0].id);
-  const [query, setQuery] = useState("");
-  const [importantOnly, setImportantOnly] = useState(false);
-  const [stepIndex, setStepIndex] = useState(0);
-  const [actionLog, setActionLog] = useState([createLog("앱이 mount 되었습니다.")]);
+  const [draftTitle, setDraftTitle] = useState("");
+  const [tasks, setTasks] = useState(initialTasks);
+  const [filter, setFilter] = useState("all");
+  const [selectedTaskId, setSelectedTaskId] = useState(initialTasks[0]?.id ?? null);
+  const [nextTaskId, setNextTaskId] = useState(initialTasks.length + 1);
+  const [actionLog, setActionLog] = useState([formatLog("mount(): 초기 렌더링 완료")]);
   const [effectMessage, setEffectMessage] = useState("useEffect가 아직 실행되지 않았습니다.");
 
-  const section = useMemo(() => findSection(activeSection), [activeSection]);
-  const documentView = useMemo(
-    () => buildDocumentView(section, query, importantOnly),
-    [section, query, importantOnly],
+  const visibleTasks = useMemo(() => filterTasks(tasks, filter), [tasks, filter]);
+  const stats = useMemo(() => buildTaskStats(tasks, filter), [tasks, filter]);
+  const selectedTask = useMemo(
+    () => tasks.find((task) => task.id === selectedTaskId) ?? null,
+    [tasks, selectedTaskId],
   );
-  const currentStep = useMemo(
-    () => pipelineSteps[stepIndex % pipelineSteps.length],
-    [stepIndex],
+  const stateSnapshot = useMemo(
+    () =>
+      JSON.stringify(
+        {
+          draftTitle,
+          filter,
+          selectedTaskId,
+          nextTaskId,
+          totalTasks: tasks.length,
+          completedTasks: tasks.filter((task) => task.done).length,
+          logEntries: actionLog.length,
+        },
+        null,
+        2,
+      ),
+    [draftTitle, filter, selectedTaskId, nextTaskId, tasks, actionLog.length],
   );
   const hookSlots = useMemo(
     () => [
-      { index: 0, name: "activeSection", value: activeSection },
-      { index: 1, name: "query", value: query || "(빈 문자열)" },
-      { index: 2, name: "importantOnly", value: String(importantOnly) },
-      { index: 3, name: "stepIndex", value: currentStep.title },
-      { index: 4, name: "actionLog", value: `${actionLog.length} entries` },
-      { index: 5, name: "effectMessage", value: effectMessage },
+      { index: 0, name: "draftTitle", value: draftTitle || "(빈 문자열)" },
+      { index: 1, name: "tasks", value: `${tasks.length} items` },
+      { index: 2, name: "filter", value: filter },
+      { index: 3, name: "selectedTaskId", value: String(selectedTaskId ?? "null") },
+      { index: 4, name: "nextTaskId", value: String(nextTaskId) },
+      { index: 5, name: "actionLog", value: `${actionLog.length} entries` },
+      { index: 6, name: "effectMessage", value: effectMessage },
     ],
-    [activeSection, query, importantOnly, currentStep.title, actionLog.length, effectMessage],
+    [draftTitle, tasks.length, filter, selectedTaskId, nextTaskId, actionLog.length, effectMessage],
   );
 
   useEffect(() => {
-    const nextMessage = `useEffect 실행 완료: 섹션=${section.title}, 검색=${query || "없음"}, 핵심만=${importantOnly}, 단계=${currentStep.title}`;
+    const selectedName = selectedTask?.title ?? "선택 없음";
+    const nextMessage = `useEffect: filter=${filter}, selected=${selectedName}, visible=${stats.visible}, progress=${stats.progress}%`;
+
     setEffectMessage(nextMessage);
 
     if (typeof document !== "undefined") {
-      document.title = `${section.title} | Week5 React-like`;
+      document.title = `${stats.completed}/${stats.total} 완료 - ${selectedName}`;
     }
 
     return undefined;
-  }, [section.title, currentStep.title, query, importantOnly]);
+  }, [filter, selectedTask?.title, stats.visible, stats.progress, stats.completed, stats.total]);
 
   function appendLog(message) {
-    setActionLog((logs) => [createLog(message), ...logs].slice(0, 8));
+    setActionLog((logs) => [formatLog(message), ...logs].slice(0, 8));
   }
 
   appActions = {
-    setSection(sectionId) {
-      setActiveSection(sectionId);
-      appendLog(`${findSection(sectionId).title} 섹션으로 이동했습니다.`);
+    updateDraftTitle(value) {
+      setDraftTitle(value);
     },
-    searchQuery(value) {
-      setQuery(value);
-      appendLog(`검색어를 "${value || "없음"}"으로 바꿨습니다.`);
+    addTask(rawTitle) {
+      const title = (rawTitle ?? draftTitle).trim();
+
+      if (!title) {
+        appendLog("빈 작업은 추가하지 않았습니다.");
+        return;
+      }
+
+      const nextTask = {
+        id: nextTaskId,
+        title,
+        category: "custom",
+        done: false,
+        note: "새로 추가된 작업입니다. 발표할 포인트를 적어 보세요.",
+      };
+
+      setTasks((currentTasks) => [...currentTasks, nextTask]);
+      setSelectedTaskId(nextTask.id);
+      setNextTaskId(nextTaskId + 1);
+      setDraftTitle("");
+      appendLog(`"${title}" 작업을 추가했습니다.`);
     },
-    toggleImportant() {
-      setImportantOnly((value) => !value);
-      appendLog("핵심만 보기 상태를 변경했습니다.");
+    setFilter(filterId) {
+      setFilter(filterId);
+      appendLog(`필터를 ${filterId}로 변경했습니다.`);
     },
-    nextStep() {
-      setStepIndex((index) => (index + 1) % pipelineSteps.length);
-      appendLog("렌더 파이프라인 설명 단계를 다음으로 넘겼습니다.");
+    selectTask(taskId) {
+      const numericId = Number(taskId);
+      const found = tasks.find((task) => task.id === numericId);
+
+      setSelectedTaskId(numericId);
+      appendLog(`"${found?.title ?? numericId}" 작업을 선택했습니다.`);
+    },
+    toggleTask(taskId) {
+      const numericId = Number(taskId);
+      const found = tasks.find((task) => task.id === numericId);
+
+      setTasks((currentTasks) =>
+        currentTasks.map((task) =>
+          task.id === numericId ? { ...task, done: !task.done } : task,
+        ),
+      );
+      appendLog(`"${found?.title ?? numericId}" 완료 상태를 변경했습니다.`);
+    },
+    removeTask(taskId) {
+      const numericId = Number(taskId);
+      const nextTasks = tasks.filter((task) => task.id !== numericId);
+      const removed = tasks.find((task) => task.id === numericId);
+
+      setTasks(nextTasks);
+
+      if (selectedTaskId === numericId) {
+        setSelectedTaskId(nextTasks[0]?.id ?? null);
+      }
+
+      appendLog(`"${removed?.title ?? numericId}" 작업을 삭제했습니다.`);
+    },
+    updateTaskNote(value) {
+      if (selectedTaskId == null) {
+        return;
+      }
+
+      setTasks((currentTasks) =>
+        currentTasks.map((task) =>
+          task.id === selectedTaskId ? { ...task, note: value } : task,
+        ),
+      );
     },
     resetDemo() {
-      setActiveSection(assignmentSections[0].id);
-      setQuery("");
-      setImportantOnly(false);
-      setStepIndex(0);
-      setActionLog([createLog("reset 버튼으로 여러 state를 한 tick에서 함께 변경했습니다.")]);
+      setDraftTitle("");
+      setTasks(initialTasks);
+      setFilter("all");
+      setSelectedTaskId(initialTasks[0]?.id ?? null);
+      setNextTaskId(initialTasks.length + 1);
+      setActionLog([formatLog("resetDemo(): 여러 root state를 한 번에 초기화했습니다.")]);
     },
   };
 
@@ -153,57 +205,48 @@ export function App() {
       "div",
       { className: "page-scene" },
       h(HeaderPanel, {
-        trail: learningTrail,
         profile: studentProfile,
-        activeTitle: section.title,
-        visibleCount: documentView.visibleCount,
-        totalCount: documentView.totalCount,
+        totalTasks: stats.total,
+        completedTasks: stats.completed,
       }),
-      h(ControlPanel, {
-        sections: assignmentSections,
-        activeSection,
-        query,
-        importantOnly,
-        currentStep,
+      h(RequirementGrid, {
+        cards: requirementCards,
       }),
       h(
         "div",
-        { className: "content-layout" },
+        { className: "workspace-layout" },
         h(
           "div",
-          { className: "document-column" },
-          h(AssignmentDocument, {
-            section: documentView,
-            query,
-            visibleCount: documentView.visibleCount,
-            totalCount: documentView.totalCount,
+          { className: "demo-stack" },
+          h(ComposerPanel, {
+            draftTitle,
+          }),
+          h(FilterBar, {
+            options: filterOptions,
+            activeFilter: filter,
+            stats,
+          }),
+          h(TaskListPanel, {
+            tasks: visibleTasks,
+            selectedTaskId,
+          }),
+          h(TaskEditorPanel, {
+            task: selectedTask,
           }),
         ),
         h(
           "div",
-          { className: "engine-column" },
-          h(EnginePanel, {
+          { className: "inspector-column" },
+          h(EngineInspector, {
+            childComponentNames,
             hookSlots,
-            currentStep,
-            steps: pipelineSteps,
+            memoValues: stats,
             effectMessage,
             actionLog,
-            highlights: engineHighlights,
+            stateSnapshot,
+            pipelineSteps,
           }),
           h(RuntimePanelShell),
-          h(
-            "section",
-            { className: "summary-panel" },
-            h("p", { className: "eyebrow" }, "useMemo 결과"),
-            h("h2", { className: "side-title" }, "지금 화면에서 계산된 값"),
-            h(
-              "div",
-              { className: "summary-grid" },
-              h("article", { className: "summary-box" }, h("span", {}, "보이는 항목"), h("strong", {}, String(documentView.visibleCount))),
-              h("article", { className: "summary-box" }, h("span", {}, "핵심 항목"), h("strong", {}, String(documentView.visibleImportantCount))),
-              h("article", { className: "summary-box" }, h("span", {}, "전체 항목"), h("strong", {}, String(documentView.totalCount))),
-            ),
-          ),
         ),
       ),
     ),

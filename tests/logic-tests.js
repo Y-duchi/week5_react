@@ -1,7 +1,6 @@
 import { diffTrees } from "../src/core/diff.js";
 import { serializeVdom } from "../src/core/vdom.js";
-import { buildDocumentView } from "../src/app/App.js";
-import { assignmentSections } from "../src/data/content.js";
+import { buildTaskStats, filterTasks } from "../src/app/App.js";
 import { FunctionComponent } from "../src/runtime/component.js";
 import { h } from "../src/runtime/h.js";
 import { useEffect, useMemo, useState } from "../src/runtime/hooks.js";
@@ -11,6 +10,12 @@ function assert(condition, message) {
     throw new Error(message);
   }
 }
+
+const sampleTasks = [
+  { id: 1, done: false },
+  { id: 2, done: true },
+  { id: 3, done: false },
+];
 
 const tests = [
   {
@@ -44,16 +49,23 @@ const tests = [
     },
   },
   {
-    name: "buildDocumentView filters nested requirement nodes",
+    name: "filterTasks returns only open tasks",
     run() {
-      const requirements = assignmentSections.find((section) => section.id === "requirements");
-      const view = buildDocumentView(requirements, "hooks", false);
+      const openTasks = filterTasks(sampleTasks, "open");
 
-      assert(view.visibleCount > 0, "hooks 검색 결과가 있어야 합니다.");
-      assert(
-        JSON.stringify(view.visibleNodes).toLowerCase().includes("hooks"),
-        "보이는 노드 안에 hooks 관련 문구가 남아야 합니다.",
-      );
+      assert(openTasks.length === 2, "미완료 작업 2개가 보여야 합니다.");
+      assert(openTasks.every((task) => task.done === false), "open 필터는 done=false만 남겨야 합니다.");
+    },
+  },
+  {
+    name: "buildTaskStats calculates progress and visible counts",
+    run() {
+      const stats = buildTaskStats(sampleTasks, "done");
+
+      assert(stats.total === 3, "전체 작업 수가 3이어야 합니다.");
+      assert(stats.completed === 1, "완료 작업 수가 1이어야 합니다.");
+      assert(stats.visible === 1, "done 필터에서 보이는 작업은 1개여야 합니다.");
+      assert(stats.progress === 33, "진행률은 33%여야 합니다.");
     },
   },
   {
@@ -68,6 +80,43 @@ const tests = [
 
       assert(html.includes('<div class="wrapper">'), "wrapper div가 있어야 합니다.");
       assert(html.includes("<strong>Hooks</strong>"), "자식 함수형 컴포넌트 결과가 렌더되어야 합니다.");
+    },
+  },
+  {
+    name: "child components cannot use hooks",
+    run() {
+      function Child() {
+        useState(0);
+        return h("span", {}, "child");
+      }
+
+      function Parent() {
+        return h("div", {}, h(Child));
+      }
+
+      const component = new FunctionComponent(Parent, {}, {
+        mountRenderer() {},
+        patchRenderer() {
+          return { mutationCount: 0 };
+        },
+        scheduler(task) {
+          task();
+        },
+      });
+
+      let error = null;
+
+      try {
+        component.mount({});
+      } catch (caughtError) {
+        error = caughtError;
+      }
+
+      assert(error instanceof Error, "자식 컴포넌트의 hook 호출은 막아야 합니다.");
+      assert(
+        error.message.includes("root component"),
+        "에러 메시지에 root component 제약이 보여야 합니다.",
+      );
     },
   },
   {
