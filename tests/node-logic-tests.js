@@ -211,6 +211,53 @@ const tests = [
     },
   },
   {
+    name: "corrupted storage payload falls back to seed tasks",
+    async run() {
+      const storage = createMemoryStorage({
+        "virtual-dom:week5:task-manager": "{bad json",
+      });
+
+      const initialState = createInitialAppState({ storage });
+
+      assert(initialState.tasks.length === 3, "invalid JSON should recover to seed tasks");
+      assert(
+        initialState.tasks[0].title === "Engine event sync regression triage",
+        "seed data should be restored when stored JSON is unreadable",
+      );
+    },
+  },
+  {
+    name: "storage read failures fall back to seed tasks",
+    async run() {
+      const storage = {
+        getItem() {
+          throw new Error("storage read fail");
+        },
+      };
+
+      const initialState = createInitialAppState({ storage });
+
+      assert(initialState.tasks.length === 3, "storage read errors should recover to seed tasks");
+      assert(initialState.nextId === 4, "seed fallback should preserve the derived next id");
+    },
+  },
+  {
+    name: "missing stored tasks payload falls back to seed tasks",
+    async run() {
+      const storage = createMemoryStorage({
+        "virtual-dom:week5:task-manager": JSON.stringify({ foo: "bar" }),
+      });
+
+      const initialState = createInitialAppState({ storage });
+
+      assert(initialState.tasks.length === 3, "payloads without tasks should recover to seed tasks");
+      assert(
+        initialState.tasks[0].title === "Engine event sync regression triage",
+        "seed tasks should be used when the tasks field is missing",
+      );
+    },
+  },
+  {
     name: "invalid stored task ids recover to numeric ids before adding new work",
     async run() {
       const storage = createMemoryStorage({
@@ -245,6 +292,177 @@ const tests = [
       assert(state.tasks[0].id === 2, "new task should receive the next numeric id");
       assert(state.tasks[1].id === 1, "stored malformed id should be normalized during hydration");
       assert(state.nextId === 3, "nextId should remain numeric after recovery");
+    },
+  },
+  {
+    name: "duplicate stored task ids are deduplicated during hydration",
+    async run() {
+      const storage = createMemoryStorage({
+        "virtual-dom:week5:task-manager": JSON.stringify({
+          tasks: [
+            { id: 1, title: "A" },
+            { id: 1, title: "B" },
+            { id: "bad", title: "C" },
+          ],
+        }),
+      });
+
+      const initialState = createInitialAppState({ storage });
+      const ids = initialState.tasks.map((task) => task.id);
+
+      assert(ids.join(",") === "1,2,3", "hydration should recover unique numeric ids");
+      assert(initialState.nextId === 4, "nextId should follow the recovered max id");
+    },
+  },
+  {
+    name: "malformed task entries do not crash hydration",
+    async run() {
+      const storage = createMemoryStorage({
+        "virtual-dom:week5:task-manager": JSON.stringify({
+          tasks: [null, 42, { title: "ok" }],
+        }),
+      });
+
+      const initialState = createInitialAppState({ storage });
+
+      assert(initialState.tasks.length === 3, "malformed entries should still hydrate into tasks");
+      assert(initialState.tasks[0].id === 1, "null entries should recover to a numeric id");
+      assert(initialState.tasks[1].title === "Task 2", "primitive entries should fall back to default title");
+      assert(initialState.tasks[2].title === "ok", "valid objects should keep their original fields");
+      assert(initialState.nextId === 4, "nextId should remain valid after recovery");
+    },
+  },
+  {
+    name: "blank stored task titles fall back to generated labels",
+    async run() {
+      const storage = createMemoryStorage({
+        "virtual-dom:week5:task-manager": JSON.stringify({
+          tasks: [
+            { id: 1, title: "   " },
+            { id: 2, title: "" },
+            { id: 3, title: "ok" },
+          ],
+        }),
+      });
+
+      const initialState = createInitialAppState({ storage });
+
+      assert(initialState.tasks[0].title === "Task 1", "whitespace-only titles should recover");
+      assert(initialState.tasks[1].title === "Task 2", "empty titles should recover");
+      assert(initialState.tasks[2].title === "ok", "valid titles should be preserved");
+    },
+  },
+  {
+    name: "blank category and createdAt values fall back to defaults",
+    async run() {
+      const storage = createMemoryStorage({
+        "virtual-dom:week5:task-manager": JSON.stringify({
+          tasks: [
+            { id: 1, title: "ok", category: "   ", createdAt: "" },
+            { id: 2, title: "x", category: null, createdAt: null },
+          ],
+        }),
+      });
+
+      const initialState = createInitialAppState({ storage });
+
+      assert(initialState.tasks[0].category === "General", "blank category should recover");
+      assert(initialState.tasks[0].createdAt === "2026-04-01", "blank createdAt should recover");
+      assert(initialState.tasks[1].category === "General", "null category should recover");
+      assert(initialState.tasks[1].createdAt === "2026-04-01", "null createdAt should recover");
+    },
+  },
+  {
+    name: "object-like text fields fall back instead of leaking object strings",
+    async run() {
+      const storage = createMemoryStorage({
+        "virtual-dom:week5:task-manager": JSON.stringify({
+          tasks: [{ id: 1, title: { bad: true }, category: { x: 1 }, createdAt: { y: 2 } }],
+        }),
+      });
+
+      const initialState = createInitialAppState({ storage });
+
+      assert(initialState.tasks[0].title === "Task 1", "object title should recover to a default label");
+      assert(initialState.tasks[0].category === "General", "object category should recover to default");
+      assert(initialState.tasks[0].createdAt === "2026-04-01", "object createdAt should recover to default");
+    },
+  },
+  {
+    name: "missing task targets do not mutate action state",
+    async run() {
+      const store = createAppStore();
+      const component = new FunctionComponent(App, {
+        props: { store },
+        store,
+      });
+
+      component.mount();
+
+      const initialState = component.getStateSnapshot();
+      const removeButton = findNode(
+        component.currentVdom,
+        (node) => node?.type === "element" && node.tagName === "button" && node.attrs?.["data-task-id"],
+      );
+      const checkbox = findNode(
+        component.currentVdom,
+        (node) => node?.type === "element" && node.tagName === "input" && node.attrs?.type === "checkbox",
+      );
+
+      removeButton.attrs.onClick({ currentTarget: { dataset: { taskId: "999" } }, stopPropagation() {} });
+      checkbox.attrs.onChange({ currentTarget: { dataset: { taskId: "999" } }, stopPropagation() {} });
+      await flushScheduledUpdates();
+
+      const nextState = component.getStateSnapshot();
+
+      assert(nextState.tasks.length === initialState.tasks.length, "missing target should not remove tasks");
+      assert(nextState.lastAction === initialState.lastAction, "missing target should not dirty inspector action text");
+    },
+  },
+  {
+    name: "persist failures do not crash the app state flow",
+    async run() {
+      const storage = {
+        getItem() {
+          return null;
+        },
+        setItem() {
+          throw new Error("quota exceeded");
+        },
+      };
+      const store = createAppStore({ storage });
+      const component = new FunctionComponent(App, {
+        props: { store },
+        store,
+      });
+
+      component.mount();
+
+      const state = component.getStateSnapshot();
+      assert(Array.isArray(state.tasks), "app should still mount even when persistence fails");
+    },
+  },
+  {
+    name: "scheduled updates are ignored after destroy",
+    async run() {
+      const api = {};
+
+      function Demo() {
+        const [count, setCount] = useState(0);
+        api.setCount = setCount;
+        return h("div", {}, String(count));
+      }
+
+      const component = new FunctionComponent(Demo);
+      component.mount();
+
+      api.setCount(1);
+      component.destroy();
+      await flushScheduledUpdates();
+
+      assert(component.renderCount === 1, "destroyed component should not render again");
+      assert(component.isMounted === false, "destroy should keep the component unmounted");
+      assert(component.getStateSnapshot() === 1, "state may update, but commit should be skipped");
     },
   },
 ];

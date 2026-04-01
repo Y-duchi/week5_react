@@ -155,7 +155,18 @@ python -m http.server 8000
 - child component에서 hook 사용 금지
 - keyed diff 동작
 - localStorage에 저장된 빈 task 배열 유지
+- 깨진 JSON 저장 데이터 복구
+- storage 읽기 실패 시 seed 데이터로 복구
+- tasks 필드가 없는 저장 payload 복구
 - localStorage에 저장된 잘못된 task id 복구
+- localStorage에 저장된 중복 task id 정규화
+- localStorage에 저장된 malformed task entry 복구
+- localStorage에 저장된 빈 task title 복구
+- localStorage에 저장된 빈 category / createdAt 복구
+- localStorage에 저장된 object 형태 문자열 필드 복구
+- 존재하지 않는 task target 이벤트 무시
+- localStorage 저장 실패 시 앱 계속 동작
+- destroy 이후 예약된 update 무시
 
 브라우저 테스트에서는 아래를 검증합니다.
 
@@ -168,6 +179,24 @@ python -m http.server 8000
 - memoized 계산 재평가
 
 ## 이번에 찾은 엣지 케이스
+
+### localStorage JSON 자체가 깨진 경우
+
+저장된 문자열이 아예 JSON 형식이 아니면 파싱 단계에서 바로 실패할 수 있습니다.
+
+현재는 이런 경우 저장 데이터를 버리고, 앱이 기본 seed 데이터로 다시 시작하도록 처리되어 있습니다.
+
+### localStorage 읽기 자체가 실패하는 경우
+
+브라우저 환경이나 보안 제약 때문에 `getItem()` 호출 자체가 실패할 수도 있습니다.
+
+이 경우에도 앱이 죽지 않고, 기본 seed 데이터로 복구되도록 되어 있습니다.
+
+### localStorage payload에 tasks 필드가 없는 경우
+
+저장 데이터는 읽혔지만 정작 `tasks` 필드가 없으면 앱 입장에서는 복원할 작업 목록이 없습니다.
+
+현재는 이런 경우도 깨진 payload로 보고, seed 데이터로 되돌아가도록 처리되어 있습니다.
 
 ### localStorage에 잘못된 task id가 들어온 경우
 
@@ -184,6 +213,54 @@ python -m http.server 8000
 1. 잘못된 id를 가진 저장 데이터를 읽는다.
 2. 초기 state가 숫자 id로 복구되는지 확인한다.
 3. 새 task를 추가했을 때 다음 id가 정상적으로 증가하는지 확인한다.
+
+### localStorage에 중복된 task id가 들어온 경우
+
+id가 숫자여도 중복되면 keyed diff와 task 토글/삭제 로직이 흔들릴 수 있습니다. 실제로 기존 구현에서는 같은 id를 가진 두 항목이 있으면 한 항목을 토글했을 때 두 항목이 같이 바뀌는 문제가 재현됐습니다.
+
+현재는 hydration 단계에서 id를 순회하며 중복을 제거하고, 이미 사용된 id와 충돌하지 않는 새 숫자 id를 다시 부여합니다.
+
+### localStorage의 task 배열 안에 malformed entry가 섞인 경우
+
+`tasks` 배열 안에 `null`, 숫자 같은 원시값, shape가 깨진 객체가 섞여 있으면 기존 구현에서는 hydration 도중 바로 크래시가 났습니다.
+
+현재는 각 entry를 안전한 객체 형태로 보정한 뒤 기본값을 채우도록 처리했습니다. 덕분에 일부 데이터가 깨져 있어도 앱은 뜨고, 복구 가능한 범위 안에서 task 목록을 유지할 수 있습니다.
+
+### localStorage에 빈 task title이 들어온 경우
+
+데이터 shape는 맞더라도 `title`이 빈 문자열이거나 공백만 들어오면, 화면에는 내용 없는 task가 렌더링됩니다. 앱이 죽지는 않지만 사용자는 왜 빈 항목이 보이는지 이해하기 어렵고, 검색/검토 흐름도 나빠집니다.
+
+현재는 trim 이후 title이 비어 있으면 `Task n` 형식의 기본 라벨로 복구하도록 처리했습니다.
+
+### localStorage에 빈 category나 createdAt이 들어온 경우
+
+task는 보여도 카테고리 뱃지나 날짜가 비어 있으면 화면 품질이 많이 떨어집니다.
+
+현재는 category가 비어 있으면 `General`, createdAt이 비어 있으면 기본 날짜로 복구하도록 처리했습니다.
+
+### localStorage에 object 형태 값이 문자열 필드에 들어온 경우
+
+title, category, createdAt 자리에 객체가 들어오면 화면에는 `[object Object]` 같은 이상한 문자열이 보일 수 있습니다.
+
+현재는 문자열/숫자/불리언만 허용하고, 그 외 값은 기본 라벨로 복구하도록 처리했습니다.
+
+### 존재하지 않는 task target으로 이벤트가 들어온 경우
+
+삭제 버튼이나 체크박스 이벤트가 비정상 `taskId`를 들고 들어오면, 실제 task 목록은 바뀌지 않아도 `lastAction` 같은 디버그 상태가 오염될 수 있습니다.
+
+현재는 target task를 찾지 못하면 toggle/remove를 no-op으로 처리해서, 리스트와 inspector 상태가 함께 일관되게 유지되도록 했습니다.
+
+### localStorage 저장이 실패하는 경우
+
+브라우저의 저장 용량 초과, private mode 제약, 보안 정책 등으로 `storage.setItem()`이 실패할 수 있습니다. 기존 구현에서는 이 예외가 그대로 전파되어 앱 전체 흐름이 끊어졌습니다.
+
+현재는 persistence 실패를 삼키고 in-memory state 흐름은 유지하도록 처리했습니다. 즉, 저장은 실패하더라도 입력, 토글, 필터 같은 UI 상호작용은 계속 가능합니다.
+
+### destroy 이후 예약된 update가 남아 있는 경우
+
+batched update가 예약된 뒤 컴포넌트가 먼저 `destroy()`되면, 이미 큐에 들어간 update가 나중에 다시 실행될 수 있습니다. 기존 구현에서는 destroy 이후에도 renderCount가 증가하고 컴포넌트가 다시 mounted 상태로 돌아오는 문제가 있었습니다.
+
+현재는 destroyed 상태를 추적해서, destroy 이후의 `update()`와 commit은 무시되도록 막았습니다.
 
 ## 구현 포인트 정리
 
@@ -234,13 +311,13 @@ UI는 역할 기준으로 분리했습니다.
 
 다음 항목들은 아직 남아 있는 개선 포인트입니다.
 
-### 1. localStorage 저장 실패 예외 처리 부족
+### 1. storage payload 스키마 검증 범위
 
-`storage.setItem()`이 실패하는 환경에서는 예외가 그대로 전파될 수 있습니다.
+현재는 `task.id` 중심으로 복구 로직을 넣었지만, title/category/createdAt까지 포함한 전체 schema validation은 아직 단순한 편입니다.
 
-### 2. destroy 이후 예약된 update 처리
+### 2. 브라우저 기반 회귀 테스트 확장
 
-`destroy()` 이후에도 이미 예약된 update가 실행될 수 있습니다. 현재 scheduler는 destroy 상태를 별도로 확인하지 않습니다.
+지금 추가한 edge case 대부분은 Node 로직 테스트로 검증하고 있습니다. storage 실패나 destroy 이후 update 같은 흐름은 브라우저 상호작용 기반 시나리오로도 확장해볼 수 있습니다.
 
 ## 참고
 

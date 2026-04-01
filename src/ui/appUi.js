@@ -430,14 +430,16 @@ function createActions(setState) {
       setState((previousState) => {
         const target = previousState.tasks.find((task) => task.id === taskId);
 
+        if (!target) {
+          return previousState;
+        }
+
         return {
           ...previousState,
           tasks: previousState.tasks.map((task) =>
             task.id === taskId ? { ...task, completed: !task.completed } : task,
           ),
-          lastAction: target
-            ? `상태 토글 -> ${target.title}`
-            : `상태 토글 -> ${taskId}`,
+          lastAction: `상태 토글 -> ${target.title}`,
           recentTaskId: previousState.recentTaskId === taskId ? null : previousState.recentTaskId,
         };
       });
@@ -453,12 +455,14 @@ function createActions(setState) {
       setState((previousState) => {
         const target = previousState.tasks.find((task) => task.id === taskId);
 
+        if (!target) {
+          return previousState;
+        }
+
         return {
           ...previousState,
           tasks: previousState.tasks.filter((task) => task.id !== taskId),
-          lastAction: target
-            ? `워크아이템 보관 -> ${target.title}`
-            : `워크아이템 보관 -> ${taskId}`,
+          lastAction: `워크아이템 보관 -> ${target.title}`,
           recentTaskId: previousState.recentTaskId === taskId ? null : previousState.recentTaskId,
         };
       });

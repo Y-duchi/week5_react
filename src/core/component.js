@@ -96,6 +96,9 @@ export class FunctionComponent {
     // 실제로 한 번이라도 mount됐는지 기록합니다.
     this.isMounted = false;
 
+    // destroy 이후 예약된 update를 무시하기 위한 상태값입니다.
+    this.isDestroyed = false;
+
     // store가 attachRoot를 지원하면 자기 자신을 루트로 등록합니다.
     if (this.store?.attachRoot) {
       this.store.attachRoot(this);
@@ -105,12 +108,17 @@ export class FunctionComponent {
   mount(container = this.container) {
     // mount 시점에 실제 사용할 container를 확정합니다.
     this.container = container ?? this.container;
+    this.isDestroyed = false;
 
     // 첫 렌더도 결국 performCommit으로 처리합니다.
     return this.performCommit();
   }
 
   update(nextProps = this.props) {
+    if (this.isDestroyed) {
+      return this.currentVdom;
+    }
+
     // 재렌더 전에 최신 props로 바꿉니다.
     this.props = nextProps;
 
@@ -164,9 +172,14 @@ export class FunctionComponent {
 
     // mount되지 않은 상태로 표시합니다.
     this.isMounted = false;
+    this.isDestroyed = true;
   }
 
   performCommit() {
+    if (this.isDestroyed) {
+      return this.currentVdom;
+    }
+
     // diff 비교를 위해 이전 VDOM을 복사해 둡니다.
     const previousVdom = cloneVdom(this.currentVdom);
 
