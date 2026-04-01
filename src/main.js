@@ -1,3 +1,4 @@
+import { formatPath } from "./core/diff.js";
 import { App, getAppActions } from "./app/App.js";
 import { FunctionComponent } from "./runtime/component.js";
 
@@ -30,6 +31,29 @@ function summarizeByType(byType) {
     .join(" · ");
 }
 
+function describeChange(change) {
+  const path = formatPath(change.path ?? []);
+
+  switch (change.type) {
+    case "CREATE_NODE":
+      return `${path}: 새 노드 생성`;
+    case "REMOVE_NODE":
+      return `${path}: 노드 제거`;
+    case "REPLACE_NODE":
+      return `${path}: 노드 교체`;
+    case "UPDATE_TEXT":
+      return `${path}: 텍스트 변경`;
+    case "SET_ATTRIBUTE":
+      return `${path}: ${change.attribute} 속성 설정`;
+    case "REMOVE_ATTRIBUTE":
+      return `${path}: ${change.attribute} 속성 제거`;
+    case "MOVE_CHILD":
+      return `${path}: 자식 노드 순서 이동`;
+    default:
+      return `${path}: ${change.type}`;
+  }
+}
+
 function syncRuntimePanel(container, commit, instance) {
   const summary = commit?.summary ?? { total: 0, byType: {} };
   const patchMeta = commit?.patchMeta ?? { mutationCount: 0 };
@@ -45,6 +69,19 @@ function syncRuntimePanel(container, commit, instance) {
   setPanelText(container, "runtime-summary", summarizeByType(summary.byType));
   setPanelText(container, "runtime-html-size", `${commit?.html?.length ?? 0} chars`);
   setPanelText(container, "runtime-updated-at", updatedAt);
+
+  const changeLog = container.querySelector("#runtime-change-log");
+  const htmlPreview = container.querySelector("#runtime-html-preview");
+
+  if (changeLog) {
+    changeLog.textContent = commit?.changes?.length
+      ? commit.changes.slice(0, 12).map(describeChange).join("\n")
+      : "변경 없음 (mount 또는 같은 값으로 재렌더)";
+  }
+
+  if (htmlPreview) {
+    htmlPreview.textContent = commit?.html?.slice(0, 1200) ?? "";
+  }
 }
 
 function bindDelegatedEvents(container, getActions) {
@@ -61,23 +98,14 @@ function bindDelegatedEvents(container, getActions) {
       case "set-section":
         actions.setSection?.(target.dataset.section);
         break;
-      case "set-lens":
-        actions.setLens?.(target.dataset.lens);
+      case "toggle-important":
+        actions.toggleImportant?.();
         break;
-      case "set-theme":
-        actions.setTheme?.(target.dataset.theme);
+      case "next-step":
+        actions.nextStep?.();
         break;
-      case "toggle-attendance":
-        actions.toggleAttendance?.();
-        break;
-      case "toggle-checklist":
-        actions.toggleChecklist?.(target.dataset.id);
-        break;
-      case "next-question":
-        actions.nextQuestion?.();
-        break;
-      case "reset-board":
-        actions.resetBoard?.();
+      case "reset-demo":
+        actions.resetDemo?.();
         break;
       default:
         break;
@@ -96,9 +124,6 @@ function bindDelegatedEvents(container, getActions) {
     switch (target.dataset.action) {
       case "search-query":
         actions.searchQuery?.(target.value);
-        break;
-      case "update-note":
-        actions.updateNote?.(target.value);
         break;
       default:
         break;

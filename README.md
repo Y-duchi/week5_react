@@ -1,137 +1,115 @@
-# Week 5 React-like Engine Dashboard
+# Week 5 React-like Document Viewer
 
-## 프로젝트 소개
+## 한 줄 소개
 
-이 프로젝트는 `5giran/Virtual-DOM` 메인 브랜치의 핵심 Virtual DOM / Diff / Patch 코드를 기반으로,
-Week 5 요구사항에 맞춰 `FunctionComponent`, `useState`, `useEffect`, `useMemo`를 직접 얹은
-React-like 엔진과 데모 페이지를 구현한 결과물입니다.
+Week 3의 Virtual DOM / Diff / Patch 코어를 바탕으로, Week 5 요구사항인
+`FunctionComponent`, `useState`, `useEffect`, `useMemo`, 루트 state 관리 구조를 직접 붙여 만든
+React-like 엔진과 과제 설명 페이지입니다.
 
-페이지 주제는 "수요 코딩회 과제 브리프 대시보드"입니다.
+이번 버전은 "예쁘게 꾸민 대시보드"가 아니라,
+과제 문구를 거의 그대로 읽으면서 오른쪽에서 엔진 동작을 이해할 수 있도록 구성하는 데 집중했습니다.
 
-- 과제의 목적, 요구사항, 중점 포인트, 품질, 결과물 발표 내용을 한 화면에 정리했습니다.
-- 검색, 탭 전환, 체크리스트, 메모, 테마 변경 등 입력/클릭에 따라 화면이 바뀝니다.
-- 루트 컴포넌트만 state를 가지고, 자식 컴포넌트는 props만 받는 순수 함수로 구성했습니다.
-- 런타임 패널에서 diff 변경 수, patch 반영 수, hook 슬롯 수를 바로 확인할 수 있습니다.
+## 페이지 구성
+
+왼쪽 문서 패널:
+
+- `목적`
+- `요구사항`
+- `중점 포인트`
+- `품질`
+- `결과물 발표`
+
+위 5개 섹션을 탭으로 이동하며 읽을 수 있습니다.
+검색과 `핵심만 보기` 토글로 현재 섹션 문서를 필터링할 수 있습니다.
+
+오른쪽 엔진 패널:
+
+- 루트 hooks 배열에 어떤 state가 들어있는지 표시
+- `state 변경 -> render -> diff -> patch -> effect` 흐름 설명
+- 최근 상호작용 로그 표시
+- 실제 diff / patch 결과와 현재 VDOM HTML 미리보기 표시
 
 ## 요구사항 대응
 
-### 1. Component
+### Component
 
-- `src/runtime/component.js`에 `FunctionComponent` 클래스를 구현했습니다.
-- 이 클래스는 다음을 가집니다.
-  - `hooks` 배열
-  - `mount()`
-  - `update()`
-  - `scheduleUpdate()` batching
-- 루트 컴포넌트 `App`만 hooks를 사용합니다.
-- 자식 컴포넌트는 `src/app/components.js`에 있는 stateless pure function입니다.
+- `src/runtime/component.js`
+- `FunctionComponent` 클래스 구현
+- 내부에 `hooks` 배열 보관
+- `mount()` 와 `update()` 직접 구현
 
-### 2. State
+### State
 
-- 모든 가변 상태는 `src/app/App.js` 루트 컴포넌트의 hooks에서만 관리합니다.
-- 예시 상태:
-  - 활성 섹션
-  - 검색어
-  - 체크리스트 완료 항목
-  - 테마
-  - 메모
-  - 출석 체크 여부
-- 자식 컴포넌트는 state를 갖지 않고 props만 받아 렌더링합니다.
+- 모든 state는 루트 `App` 컴포넌트에만 있습니다.
+- 자식 컴포넌트는 `src/app/components.js`의 순수 함수입니다.
+- 자식은 props만 받아 렌더링하고 hooks를 사용하지 않습니다.
 
-### 3. Hooks
+### Hooks
 
 - `src/runtime/hooks.js`
-  - `useState`
-  - `useEffect`
-  - `useMemo`
-- hooks는 루트 `FunctionComponent`의 `hooks` 배열과 `hookCursor` 인덱스로 상태를 유지합니다.
-- `useEffect`는 commit 이후 실행되며 cleanup도 지원합니다.
-- `useMemo`는 deps가 바뀌지 않으면 계산을 재사용합니다.
+- `useState`
+- `useEffect`
+- `useMemo`
 
-### 4. Virtual DOM + Diff + Patch
+hooks는 루트 `FunctionComponent`의 `hooks` 배열과 `hookCursor` 인덱스로 상태를 유지합니다.
 
-- 참고 저장소의 코어를 `src/core`에 유지했습니다.
-  - `src/core/vdom.js`
-  - `src/core/diff.js`
-  - `src/core/patch.js`
-- `FunctionComponent.update()` 흐름
-  1. 루트 컴포넌트 재실행
-  2. 새 Virtual DOM 생성
-  3. 이전 Virtual DOM과 diff 계산
-  4. patch로 실제 DOM 일부만 갱신
-  5. effect 실행
+### Virtual DOM + Diff + Patch
 
-## 파일 구조
+- `src/core/vdom.js`
+- `src/core/diff.js`
+- `src/core/patch.js`
 
-```text
-react2/
-├── public/
-│   ├── index.html
-│   └── tests.html
-├── styles/
-│   └── main.css
-├── src/
-│   ├── main.js
-│   ├── core/
-│   │   ├── vdom.js
-│   │   ├── diff.js
-│   │   └── patch.js
-│   ├── runtime/
-│   │   ├── h.js
-│   │   ├── hooks.js
-│   │   └── component.js
-│   ├── data/
-│   │   └── content.js
-│   └── app/
-│       ├── App.js
-│       └── components.js
-├── tests/
-│   ├── logic-tests.js
-│   └── browser-tests.js
-├── styles/main.css
-├── package.json
-└── README.md
-```
+루트 state가 바뀌면:
+
+1. 컴포넌트 함수 재실행
+2. 새 Virtual DOM 생성
+3. 이전 Virtual DOM과 diff 계산
+4. patch로 실제 DOM 일부만 갱신
+5. effect 실행
+
+## 상호작용 예시
+
+- 섹션 탭 클릭
+- 검색어 입력
+- `핵심만 보기` 토글
+- `렌더 단계 넘기기`
+- `데모 초기화`
+
+이 동작들은 모두 루트 state를 바꾸고, 화면이 다시 렌더링되도록 설계했습니다.
 
 ## 실행 방법
 
 ```bash
-npm test
+node tests/logic-tests.js
 python3 -m http.server 8000
 ```
 
-브라우저에서 아래 경로를 열면 됩니다.
+브라우저 경로:
 
 - 앱: `http://localhost:8000/public/index.html`
-- 브라우저 테스트 페이지: `http://localhost:8000/public/tests.html`
+- 브라우저 테스트: `http://localhost:8000/public/tests.html`
 
 ## 테스트
 
-### 단위 테스트
+### 로직 테스트
 
 `tests/logic-tests.js`
 
 - diff가 텍스트와 속성 변화를 감지하는지
-- 순수 함수형 자식 컴포넌트가 VDOM에 반영되는지
+- 문서 필터가 중첩 항목까지 잘 찾는지
+- 순수 함수형 자식 컴포넌트가 렌더되는지
 - `useState`가 rerender 사이에서 상태를 유지하는지
 - `useMemo`가 deps가 바뀔 때만 다시 계산되는지
 - `useEffect` cleanup 순서가 맞는지
 - batching이 한 tick에서 한 번만 update를 예약하는지
 
-### 기능 테스트
+### 브라우저 테스트
 
 `tests/browser-tests.js`
 
-- 초기 섹션이 목적 섹션인지
-- 탭 클릭으로 다른 섹션을 볼 수 있는지
-- 검색 입력으로 카드가 필터링되는지
-- 체크리스트 토글이 완료 수치에 반영되는지
+- 초기 섹션이 `목적`인지
+- 탭 클릭으로 `요구사항` 섹션으로 이동하는지
+- 검색 입력으로 문서가 필터링되는지
+- `핵심만 보기` 토글이 동작하는지
+- 렌더 단계 넘기기가 단계 제목을 바꾸는지
 - 런타임 패널에 렌더 횟수가 표시되는지
-
-## 발표 포인트
-
-- 왜 state를 루트에만 두었는가
-- hooks 배열과 hook index로 상태가 어떻게 유지되는가
-- setState 이후 rerender -> diff -> patch -> effect가 어떻게 이어지는가
-- 실제 React와 비교하면 어떤 기능이 단순화되었는가
-- Virtual DOM 코어를 어떻게 재사용하고 확장했는가

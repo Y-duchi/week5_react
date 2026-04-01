@@ -1,5 +1,7 @@
 import { diffTrees } from "../src/core/diff.js";
 import { serializeVdom } from "../src/core/vdom.js";
+import { buildDocumentView } from "../src/app/App.js";
+import { assignmentSections } from "../src/data/content.js";
 import { FunctionComponent } from "../src/runtime/component.js";
 import { h } from "../src/runtime/h.js";
 import { useEffect, useMemo, useState } from "../src/runtime/hooks.js";
@@ -39,6 +41,19 @@ const tests = [
 
       const changes = diffTrees(previous, next);
       assert(changes.length === 3, "텍스트와 속성 변경 3개를 감지해야 합니다.");
+    },
+  },
+  {
+    name: "buildDocumentView filters nested requirement nodes",
+    run() {
+      const requirements = assignmentSections.find((section) => section.id === "requirements");
+      const view = buildDocumentView(requirements, "hooks", false);
+
+      assert(view.visibleCount > 0, "hooks 검색 결과가 있어야 합니다.");
+      assert(
+        JSON.stringify(view.visibleNodes).toLowerCase().includes("hooks"),
+        "보이는 노드 안에 hooks 관련 문구가 남아야 합니다.",
+      );
     },
   },
   {
@@ -96,7 +111,7 @@ const tests = [
 
       function MemoView() {
         const [count, updateCount] = useState(1);
-        const [theme, updateTheme] = useState("citrus");
+        const [theme, updateTheme] = useState("plain");
         const doubled = useMemo(() => {
           deriveCalls += 1;
           return count * 2;
@@ -119,7 +134,7 @@ const tests = [
       });
 
       component.mount({});
-      setTheme("forest");
+      setTheme("accent");
       setCount(2);
 
       assert(deriveCalls === 2, "count가 바뀔 때만 useMemo가 다시 계산되어야 합니다.");
