@@ -4,7 +4,7 @@
 
 Week 3의 Virtual DOM / Diff / Patch를 바탕으로, Week 5 요구사항인 `FunctionComponent`, `useState`, `useEffect`, `useMemo`, 루트 전용 state 관리를 직접 구현한 Mini React 데모입니다.
 
-이 저장소의 목표는 "예쁜 화면"보다 "다음 단계 버튼만 눌러도 state, hooks, diff / patch를 차례대로 설명할 수 있는 화면"입니다.
+이 저장소의 목표는 "예쁜 화면"보다 "사용자가 직접 입력하거나 버튼을 눌렀을 때 state, hooks, diff / patch가 옆에서 어떻게 바뀌는지 바로 설명할 수 있는 화면"입니다.
 
 ## 이 데모에서 바로 설명할 수 있는 것
 
@@ -16,35 +16,33 @@ Week 3의 Virtual DOM / Diff / Patch를 바탕으로, Week 5 요구사항인 `Fu
 
 ## 화면 구성
 
-### 1. 시연 모드
+### 1. 실제 동작 앱
 
-- `다음 단계`
-- `처음부터`
-- 현재 시연 단계 설명
+왼쪽에서 바로 시연할 수 있습니다.
 
-발표할 때 한 단계씩 천천히 넘기면서 설명할 수 있습니다.
+- input 입력
+- 작업 추가
+- 카드 선택
+- 완료 토글
+- 필터 변경
+- 메모 수정
+- 초기화
 
-### 2. 요구사항 대응 리스트
+### 2. 변화 요약 패널
+
+오른쪽 맨 위에서 바로 확인할 수 있습니다.
+
+- 방금 어떤 행동을 했는지
+- 어떤 state가 `before -> after`로 바뀌었는지
+- 어떤 hook 슬롯이 `before -> after`로 바뀌었는지
+
+### 3. 내부 동작 패널
 
 - Component
 - State
 - Hooks
 - Virtual DOM
 - Test Page
-
-각 항목마다 "무엇을 구현했고 어디에 있는지"를 한 줄씩 확인할 수 있습니다.
-
-### 3. 실제 동작 앱
-
-`Jungle Weekly Build Board`에서 다음 상호작용을 바로 시연할 수 있습니다.
-
-- 새 작업 추가
-- 완료 토글
-- 완료 / 미완료 필터 변경
-- 선택한 작업 메모 수정
-- 전체 상태 초기화
-
-### 4. 엔진 인스펙터
 
 - Root state snapshot
 - hooks 배열 슬롯
@@ -53,13 +51,16 @@ Week 3의 Virtual DOM / Diff / Patch를 바탕으로, Week 5 요구사항인 `Fu
 - 최근 action log
 - diff / patch 통계와 현재 VDOM HTML
 
-즉, 화면을 이렇게 설명하면 됩니다.
+### 4. 요구사항 대응 리스트
 
-1. `다음 단계`를 눌러 input 값이 draftTitle state에 저장되는 걸 보여줍니다.
-2. 다시 눌러 tasks state에 새 작업이 추가되는 걸 보여줍니다.
-3. 다시 눌러 선택 상태와 메모 수정이 어떻게 이어지는지 보여줍니다.
-4. 마지막 단계에서 완료 처리와 filter 적용까지 보여줍니다.
-5. 오른쪽 패널에서 root state, hooks, diff / patch를 같이 설명합니다.
+각 항목마다 "무엇을 구현했고 어디에 있는지"를 한 줄씩 확인할 수 있습니다.
+
+즉, 화면은 이렇게 설명하면 됩니다.
+
+1. 왼쪽에서 input이나 버튼을 직접 누릅니다.
+2. 오른쪽 요약 패널에서 바뀐 state와 hook 슬롯을 바로 보여줍니다.
+3. 그 아래 패널에서 현재 root state와 전체 hooks 배열을 봅니다.
+4. 마지막으로 runtime 패널에서 diff / patch와 실제 hook delta를 설명합니다.
 
 ## 요구사항 대응
 
@@ -124,7 +125,7 @@ python3 -m http.server 8000
 
 ### DOM 스모크 테스트
 
-- 입력 -> 작업 추가
-- 항목 선택 -> 메모 수정
-- 완료 토글 -> 완료 필터 적용
-- 렌더 수 / root state snapshot 반영 확인
+- 입력 후 `draftTitle` 변화 표시
+- 작업 추가 후 `tasks` hook 변화 표시
+- 항목 선택 / 메모 수정 반영
+- 완료 토글 / 필터 변경 후 runtime hook delta 반영

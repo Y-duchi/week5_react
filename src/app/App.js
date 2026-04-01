@@ -3,22 +3,18 @@ import {
   filterOptions,
   initialTasks,
   pipelineSteps,
-  presentationSteps,
-  presentationTaskSeed,
   requirementCards,
   studentProfile,
 } from "../data/content.js";
 import { fragment, h } from "../runtime/h.js";
 import { useEffect, useMemo, useState } from "../runtime/hooks.js";
 import {
+  ChangeSummaryPanel,
   ComposerPanel,
-  DemoColumnIntro,
+  DemoGuidePanel,
   EngineInspector,
   FilterBar,
-  FlowSnapshotPanel,
   HeaderPanel,
-  InspectorColumnIntro,
-  PresentationPanel,
   RequirementGrid,
   RuntimePanelShell,
   TaskEditorPanel,
@@ -26,6 +22,59 @@ import {
 } from "./components.js";
 
 let appActions = {};
+
+const EMPTY_INTERACTION = {
+  title: "아직 사용자 상호작용이 없습니다.",
+  description: "왼쪽에서 입력하거나 버튼을 눌러 보세요. 오른쪽에서 state와 hook 변화가 바로 보입니다.",
+  changedStates: [],
+  changedHooks: [],
+};
+
+function formatValue(value) {
+  if (typeof value === "string") {
+    return value || "(빈 문자열)";
+  }
+
+  if (value == null) {
+    return "null";
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `${value.length}개`;
+  }
+
+  return JSON.stringify(value);
+}
+
+function stateChange(label, before, after) {
+  return {
+    label,
+    before: formatValue(before),
+    after: formatValue(after),
+  };
+}
+
+function hookChange(slot, label, before, after) {
+  return {
+    slot,
+    label,
+    before: formatValue(before),
+    after: formatValue(after),
+  };
+}
+
+function buildInteraction(title, description, changedStates, changedHooks) {
+  return {
+    title,
+    description,
+    changedStates,
+    changedHooks,
+  };
+}
 
 export function filterTasks(tasks, filter) {
   if (filter === "open") {
@@ -68,26 +117,15 @@ export function App() {
   const [filter, setFilter] = useState("all");
   const [selectedTaskId, setSelectedTaskId] = useState(initialTasks[0]?.id ?? null);
   const [nextTaskId, setNextTaskId] = useState(initialTasks.length + 1);
-  const [presentationStep, setPresentationStep] = useState(0);
-  const [presentationTaskId, setPresentationTaskId] = useState(null);
-  const [actionLog, setActionLog] = useState([formatLog("mount(): 초기 렌더링 완료")]);
   const [effectMessage, setEffectMessage] = useState("useEffect가 아직 실행되지 않았습니다.");
+  const [actionLog, setActionLog] = useState([formatLog("mount(): 초기 렌더링 완료")]);
+  const [lastInteraction, setLastInteraction] = useState(EMPTY_INTERACTION);
 
   const visibleTasks = useMemo(() => filterTasks(tasks, filter), [tasks, filter]);
   const stats = useMemo(() => buildTaskStats(tasks, filter), [tasks, filter]);
   const selectedTask = useMemo(
     () => tasks.find((task) => task.id === selectedTaskId) ?? null,
     [tasks, selectedTaskId],
-  );
-  const latestAction = useMemo(() => {
-    const current = actionLog[0] ?? "아직 상호작용이 없습니다.";
-    const parts = current.split(" - ");
-
-    return parts.length > 1 ? parts.slice(1).join(" - ") : current;
-  }, [actionLog]);
-  const activePresentation = useMemo(
-    () => presentationSteps[presentationStep] ?? presentationSteps[0],
-    [presentationStep],
   );
   const stateSnapshot = useMemo(
     () =>
@@ -97,11 +135,9 @@ export function App() {
           filter,
           selectedTaskId,
           nextTaskId,
-          presentationStep,
-          presentationTaskId,
           totalTasks: tasks.length,
-          completedTasks: tasks.filter((task) => task.done).length,
-          logEntries: actionLog.length,
+          completedTasks: stats.completed,
+          lastInteraction: lastInteraction.title,
         },
         null,
         2,
@@ -111,54 +147,39 @@ export function App() {
       filter,
       selectedTaskId,
       nextTaskId,
-      presentationStep,
-      presentationTaskId,
-      tasks,
-      actionLog.length,
+      tasks.length,
+      stats.completed,
+      lastInteraction.title,
     ],
   );
   const stateFacts = useMemo(
     () => [
+      { label: "draftTitle", value: draftTitle || "(빈 문자열)" },
       { label: "filter", value: filter },
       { label: "selected", value: selectedTask?.title ?? "없음" },
       { label: "tasks", value: `${tasks.length}개` },
       { label: "done", value: `${stats.completed}개` },
-      { label: "step", value: activePresentation.title },
     ],
-    [filter, selectedTask?.title, tasks.length, stats.completed, activePresentation.title],
-  );
-  const computedFacts = useMemo(
-    () => [
-      { label: "visibleTasks", value: `${stats.visible}개` },
-      { label: "progress", value: `${stats.progress}%` },
-      { label: "openTasks", value: `${stats.open}개` },
-      { label: "draft", value: draftTitle || "(비어 있음)" },
-    ],
-    [draftTitle, stats.visible, stats.progress, stats.open],
+    [draftTitle, filter, selectedTask?.title, tasks.length, stats.completed],
   );
   const hookSlots = useMemo(
     () => [
-      { index: 0, name: "draftTitle", value: draftTitle || "(빈 문자열)" },
-      { index: 1, name: "tasks", value: `${tasks.length} items` },
-      { index: 2, name: "filter", value: filter },
-      { index: 3, name: "selectedTaskId", value: String(selectedTaskId ?? "null") },
-      { index: 4, name: "nextTaskId", value: String(nextTaskId) },
-      { index: 5, name: "presentationStep", value: String(presentationStep) },
-      { index: 6, name: "presentationTaskId", value: String(presentationTaskId ?? "null") },
-      { index: 7, name: "actionLog", value: `${actionLog.length} entries` },
-      { index: 8, name: "effectMessage", value: effectMessage },
+      { slot: 0, name: "draftTitle", value: draftTitle || "(빈 문자열)" },
+      { slot: 1, name: "tasks", value: `${tasks.length} items` },
+      { slot: 2, name: "filter", value: filter },
+      { slot: 3, name: "selectedTaskId", value: String(selectedTaskId ?? "null") },
+      { slot: 4, name: "nextTaskId", value: String(nextTaskId) },
+      { slot: 5, name: "effectMessage", value: effectMessage },
     ],
-    [
-      draftTitle,
-      tasks.length,
-      filter,
-      selectedTaskId,
-      nextTaskId,
-      presentationStep,
-      presentationTaskId,
-      actionLog.length,
-      effectMessage,
-    ],
+    [draftTitle, tasks.length, filter, selectedTaskId, nextTaskId, effectMessage],
+  );
+  const changedStateLabels = useMemo(
+    () => new Set(lastInteraction.changedStates.map((item) => item.label)),
+    [lastInteraction.changedStates],
+  );
+  const changedHookSlots = useMemo(
+    () => new Set(lastInteraction.changedHooks.map((item) => item.slot)),
+    [lastInteraction.changedHooks],
   );
 
   useEffect(() => {
@@ -178,91 +199,59 @@ export function App() {
     setActionLog((logs) => [formatLog(message), ...logs].slice(0, 8));
   }
 
-  function resetBoard(logMessage = "resetDemo(): 여러 root state를 한 번에 초기화했습니다.") {
-    setDraftTitle("");
-    setTasks(initialTasks);
-    setFilter("all");
-    setSelectedTaskId(initialTasks[0]?.id ?? null);
-    setNextTaskId(initialTasks.length + 1);
-    setPresentationStep(0);
-    setPresentationTaskId(null);
-    setActionLog([formatLog(logMessage)]);
+  function recordInteraction(interaction, logMessage) {
+    setLastInteraction(interaction);
+
+    if (logMessage) {
+      appendLog(logMessage);
+    }
   }
 
-  function runPresentationStep() {
-    const focusId = presentationTaskId;
-
-    switch (presentationStep) {
-      case 0:
-        setDraftTitle(presentationTaskSeed.title);
-        setPresentationStep(1);
-        appendLog("시연 1단계: input 값이 draftTitle state에 저장되었습니다.");
-        return;
-      case 1: {
-        const createdId = nextTaskId;
-        const title = draftTitle.trim() || presentationTaskSeed.title;
-        const nextTask = {
-          id: createdId,
-          title,
-          category: "demo",
-          done: false,
-          note: presentationTaskSeed.note,
-        };
-
-        setTasks((currentTasks) => [...currentTasks, nextTask]);
-        setSelectedTaskId(createdId);
-        setNextTaskId(createdId + 1);
-        setPresentationTaskId(createdId);
-        setDraftTitle("");
-        setPresentationStep(2);
-        appendLog("시연 2단계: tasks state에 새 작업이 추가되었습니다.");
-        return;
-      }
-      case 2:
-        if (focusId != null) {
-          setSelectedTaskId(focusId);
-          appendLog("시연 3단계: selectedTaskId가 바뀌면서 설명 패널이 교체됩니다.");
-        }
-        setPresentationStep(3);
-        return;
-      case 3:
-        if (focusId != null) {
-          setTasks((currentTasks) =>
-            currentTasks.map((task) =>
-              task.id === focusId ? { ...task, note: presentationTaskSeed.updatedNote } : task,
-            ),
-          );
-          appendLog("시연 4단계: tasks 안의 note 값이 바뀌었습니다.");
-        }
-        setPresentationStep(4);
-        return;
-      case 4:
-        if (focusId != null) {
-          setTasks((currentTasks) =>
-            currentTasks.map((task) =>
-              task.id === focusId ? { ...task, done: true } : task,
-            ),
-          );
-          setSelectedTaskId(focusId);
-          setFilter("done");
-          appendLog("시연 5단계: 완료 처리 후 done 필터를 적용했습니다.");
-        }
-        setPresentationStep(5);
-        return;
-      default:
-        appendLog("시연 마지막 단계입니다. 처음부터 버튼으로 다시 보여줄 수 있습니다.");
-    }
+  function buildResetInteraction() {
+    return buildInteraction(
+      "초기화 버튼 클릭",
+      "루트 state들을 초기 상태로 되돌렸습니다.",
+      [
+        stateChange("draftTitle", draftTitle, ""),
+        stateChange("filter", filter, "all"),
+        stateChange("selectedTaskId", selectedTaskId, initialTasks[0]?.id ?? null),
+        stateChange("tasks", `${tasks.length}개`, `${initialTasks.length}개`),
+      ],
+      [
+        hookChange(0, "draftTitle", draftTitle, ""),
+        hookChange(1, "tasks", `${tasks.length} items`, `${initialTasks.length} items`),
+        hookChange(2, "filter", filter, "all"),
+        hookChange(3, "selectedTaskId", selectedTaskId, initialTasks[0]?.id ?? null),
+      ],
+    );
   }
 
   appActions = {
     updateDraftTitle(value) {
       setDraftTitle(value);
+      recordInteraction(
+        buildInteraction(
+          "input 입력",
+          "사용자가 입력창에 값을 넣어서 draftTitle state가 바뀌었습니다.",
+          [stateChange("draftTitle", draftTitle, value)],
+          [hookChange(0, "draftTitle", draftTitle, value)],
+        ),
+        `draftTitle 입력값을 "${value}"로 변경했습니다.`,
+      );
     },
     addTask(rawTitle) {
       const title = (rawTitle ?? draftTitle).trim();
 
       if (!title) {
-        appendLog("빈 작업은 추가하지 않았습니다.");
+        recordInteraction(
+          buildInteraction(
+            "작업 추가 버튼 클릭",
+            "입력값이 비어 있어서 tasks state는 바뀌지 않았습니다.",
+            [],
+            [],
+          ),
+          "빈 작업은 추가하지 않았습니다.",
+        );
         return;
       }
 
@@ -278,62 +267,141 @@ export function App() {
       setSelectedTaskId(nextTask.id);
       setNextTaskId(nextTaskId + 1);
       setDraftTitle("");
-      appendLog(`"${title}" 작업을 추가했습니다.`);
+      recordInteraction(
+        buildInteraction(
+          "작업 추가 버튼 클릭",
+          `"${title}" 작업이 추가되면서 tasks, selectedTaskId, nextTaskId, draftTitle가 함께 바뀌었습니다.`,
+          [
+            stateChange("draftTitle", draftTitle, ""),
+            stateChange("tasks", `${tasks.length}개`, `${tasks.length + 1}개`),
+            stateChange("selectedTaskId", selectedTaskId, nextTask.id),
+            stateChange("nextTaskId", nextTaskId, nextTaskId + 1),
+          ],
+          [
+            hookChange(0, "draftTitle", draftTitle, ""),
+            hookChange(1, "tasks", `${tasks.length} items`, `${tasks.length + 1} items`),
+            hookChange(3, "selectedTaskId", selectedTaskId, nextTask.id),
+            hookChange(4, "nextTaskId", nextTaskId, nextTaskId + 1),
+          ],
+        ),
+        `"${title}" 작업을 추가했습니다.`,
+      );
     },
     setFilter(filterId) {
       setFilter(filterId);
-      appendLog(`필터를 ${filterId}로 변경했습니다.`);
+      recordInteraction(
+        buildInteraction(
+          "필터 버튼 클릭",
+          `filter state가 ${filterId}로 바뀌면서 보이는 목록과 통계값이 다시 계산됩니다.`,
+          [stateChange("filter", filter, filterId)],
+          [hookChange(2, "filter", filter, filterId)],
+        ),
+        `필터를 ${filterId}로 변경했습니다.`,
+      );
     },
     selectTask(taskId) {
       const numericId = Number(taskId);
       const found = tasks.find((task) => task.id === numericId);
 
       setSelectedTaskId(numericId);
-      appendLog(`"${found?.title ?? numericId}" 작업을 선택했습니다.`);
+      recordInteraction(
+        buildInteraction(
+          "작업 카드 선택",
+          `selectedTaskId가 ${numericId}로 바뀌면서 오른쪽 설명 영역이 새 작업으로 바뀝니다.`,
+          [stateChange("selectedTaskId", selectedTaskId, numericId)],
+          [hookChange(3, "selectedTaskId", selectedTaskId, numericId)],
+        ),
+        `"${found?.title ?? numericId}" 작업을 선택했습니다.`,
+      );
     },
     toggleTask(taskId) {
       const numericId = Number(taskId);
       const found = tasks.find((task) => task.id === numericId);
+      const nextDone = !found?.done;
 
       setTasks((currentTasks) =>
         currentTasks.map((task) =>
           task.id === numericId ? { ...task, done: !task.done } : task,
         ),
       );
-      appendLog(`"${found?.title ?? numericId}" 완료 상태를 변경했습니다.`);
+      recordInteraction(
+        buildInteraction(
+          "완료 상태 토글",
+          `"${found?.title ?? numericId}"의 done 값이 ${String(nextDone)}로 바뀌었습니다.`,
+          [
+            stateChange("tasks", `${tasks.length}개`, `${tasks.length}개 (done changed)`),
+            stateChange(`tasks[${numericId}].done`, found?.done, nextDone),
+          ],
+          [
+            hookChange(1, "tasks", `${tasks.length} items`, `${tasks.length} items (done changed)`),
+          ],
+        ),
+        `"${found?.title ?? numericId}" 완료 상태를 변경했습니다.`,
+      );
     },
     removeTask(taskId) {
       const numericId = Number(taskId);
       const nextTasks = tasks.filter((task) => task.id !== numericId);
       const removed = tasks.find((task) => task.id === numericId);
+      const nextSelectedId =
+        selectedTaskId === numericId ? (nextTasks[0]?.id ?? null) : selectedTaskId;
 
       setTasks(nextTasks);
 
       if (selectedTaskId === numericId) {
-        setSelectedTaskId(nextTasks[0]?.id ?? null);
+        setSelectedTaskId(nextSelectedId);
       }
 
-      appendLog(`"${removed?.title ?? numericId}" 작업을 삭제했습니다.`);
+      recordInteraction(
+        buildInteraction(
+          "삭제 버튼 클릭",
+          `"${removed?.title ?? numericId}"가 제거되면서 tasks 길이가 줄었습니다.`,
+          [
+            stateChange("tasks", `${tasks.length}개`, `${nextTasks.length}개`),
+            stateChange("selectedTaskId", selectedTaskId, nextSelectedId),
+          ],
+          [
+            hookChange(1, "tasks", `${tasks.length} items`, `${nextTasks.length} items`),
+            hookChange(3, "selectedTaskId", selectedTaskId, nextSelectedId),
+          ],
+        ),
+        `"${removed?.title ?? numericId}" 작업을 삭제했습니다.`,
+      );
     },
     updateTaskNote(value) {
       if (selectedTaskId == null) {
         return;
       }
 
+      const beforeNote = selectedTask?.note ?? "";
+
       setTasks((currentTasks) =>
         currentTasks.map((task) =>
           task.id === selectedTaskId ? { ...task, note: value } : task,
         ),
       );
+      recordInteraction(
+        buildInteraction(
+          "메모 입력",
+          "선택한 작업의 note가 바뀌면서 tasks state 내부 값이 갱신되었습니다.",
+          [
+            stateChange("tasks", `${tasks.length}개`, `${tasks.length}개 (note changed)`),
+            stateChange(`tasks[${selectedTaskId}].note`, beforeNote, value),
+          ],
+          [hookChange(1, "tasks", beforeNote, value)],
+        ),
+        `선택한 작업의 메모를 수정했습니다.`,
+      );
     },
     resetDemo() {
-      resetBoard();
-    },
-    advancePresentation() {
-      runPresentationStep();
-    },
-    restartPresentation() {
-      resetBoard("시연 모드를 처음 상태로 되돌렸습니다.");
+      setDraftTitle("");
+      setTasks(initialTasks);
+      setFilter("all");
+      setSelectedTaskId(initialTasks[0]?.id ?? null);
+      setNextTaskId(initialTasks.length + 1);
+      setEffectMessage("useEffect가 아직 실행되지 않았습니다.");
+      setActionLog([formatLog("resetDemo(): 여러 root state를 한 번에 초기화했습니다.")]);
+      setLastInteraction(buildResetInteraction());
     },
   };
 
@@ -346,26 +414,13 @@ export function App() {
         totalTasks: stats.total,
         completedTasks: stats.completed,
       }),
-      h(PresentationPanel, {
-        steps: presentationSteps,
-        currentStep: presentationStep,
-      }),
-      h(FlowSnapshotPanel, {
-        latestAction,
-        stateFacts,
-        computedFacts,
-        effectMessage,
-      }),
-      h(RequirementGrid, {
-        cards: requirementCards,
-      }),
       h(
         "div",
         { className: "workspace-layout" },
         h(
           "div",
           { className: "demo-stack" },
-          h(DemoColumnIntro),
+          h(DemoGuidePanel),
           h(ComposerPanel, {
             draftTitle,
           }),
@@ -385,7 +440,9 @@ export function App() {
         h(
           "div",
           { className: "inspector-column" },
-          h(InspectorColumnIntro),
+          h(ChangeSummaryPanel, {
+            interaction: lastInteraction,
+          }),
           h(EngineInspector, {
             childComponentNames,
             hookSlots,
@@ -395,10 +452,15 @@ export function App() {
             stateFacts,
             stateSnapshot,
             pipelineSteps,
+            changedStateLabels,
+            changedHookSlots,
           }),
           h(RuntimePanelShell),
         ),
       ),
+      h(RequirementGrid, {
+        cards: requirementCards,
+      }),
     ),
   );
 }

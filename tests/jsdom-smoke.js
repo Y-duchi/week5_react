@@ -68,8 +68,16 @@ assert(
   "새 작업 텍스트가 화면에 보여야 합니다.",
 );
 assert(
-  document.body.textContent?.includes("실제 React와의 차이점도 같이 설명한다."),
-  "수정한 메모가 보여야 합니다.",
+  document.querySelector("#interaction-title")?.textContent?.includes("필터"),
+  "마지막 상호작용 제목이 필터 변경이어야 합니다.",
+);
+assert(
+  document.querySelector("#interaction-hook-changes")?.textContent?.includes("Hook[2]"),
+  "필터 변경 시 Hook[2] 변화가 보여야 합니다.",
+);
+assert(
+  document.querySelector("#runtime-hook-delta")?.textContent?.includes("filter"),
+  "runtime hook delta에 filter 변화가 보여야 합니다.",
 );
 assert(
   Number(document.querySelector("#runtime-render-count")?.textContent ?? "0") >= 4,

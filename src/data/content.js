@@ -73,45 +73,6 @@ export const initialTasks = [
   },
 ];
 
-export const presentationSteps = [
-  {
-    id: 0,
-    title: "시작",
-    summary: "초기 화면입니다. 아직 아무것도 바꾸지 않았습니다.",
-  },
-  {
-    id: 1,
-    title: "입력값 저장",
-    summary: "input에 쓴 값이 draftTitle root state에 저장됩니다.",
-  },
-  {
-    id: 2,
-    title: "작업 추가",
-    summary: "tasks state에 새 항목이 추가되고 선택 상태도 같이 바뀝니다.",
-  },
-  {
-    id: 3,
-    title: "선택 상태 변경",
-    summary: "selectedTaskId가 바뀌면서 오른쪽 설명 패널이 교체됩니다.",
-  },
-  {
-    id: 4,
-    title: "메모 수정",
-    summary: "tasks 내부 note 값이 바뀌고 카드 미리보기까지 함께 갱신됩니다.",
-  },
-  {
-    id: 5,
-    title: "완료 + 필터 적용",
-    summary: "done 상태와 filter가 같이 바뀌면서 보이는 목록이 달라집니다.",
-  },
-];
-
-export const presentationTaskSeed = {
-  title: "발표 시연 순서 정리",
-  note: "오른쪽 패널에서 state, hooks, diff / patch 순서로 설명한다.",
-  updatedNote: "입력 -> state -> rerender -> diff -> patch -> effect 순서로 발표한다.",
-};
-
 export const filterOptions = [
   { id: "all", label: "전체" },
   { id: "open", label: "미완료" },

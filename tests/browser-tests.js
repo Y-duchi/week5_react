@@ -33,33 +33,36 @@ export function runBrowserTests(output) {
       },
     },
     {
-      name: "입력 후 작업 추가가 된다",
+      name: "입력하면 상호작용 패널에 draftTitle 변화가 보인다",
       async run() {
         const input = sandbox.querySelector('[data-action="update-draft-title"]');
         input.value = "브라우저 테스트 발표 준비";
         input.dispatchEvent(new Event("input", { bubbles: true }));
+        await flush();
+
+        const title = sandbox.querySelector("#interaction-title")?.textContent ?? "";
+        const changes = sandbox.querySelector("#interaction-state-changes")?.textContent ?? "";
+
+        assert(title.includes("input"), "상호작용 제목이 input 입력으로 바뀌어야 합니다.");
+        assert(changes.includes("draftTitle"), "draftTitle 변화가 보여야 합니다.");
+      },
+    },
+    {
+      name: "작업 추가 후 tasks hook 변화가 보인다",
+      async run() {
         sandbox.querySelector('[data-action="add-task"]')?.click();
         await flush();
 
         const text = sandbox.querySelector(".task-grid")?.textContent ?? "";
+        const hooks = sandbox.querySelector("#interaction-hook-changes")?.textContent ?? "";
         assert(text.includes("브라우저 테스트 발표 준비"), "새 작업이 목록에 추가되어야 합니다.");
-      },
-    },
-    {
-      name: "완료 필터가 동작한다",
-      async run() {
-        sandbox.querySelector('[data-action="set-filter"][data-filter="done"]')?.click();
-        await flush();
-
-        const text = sandbox.querySelector(".task-grid")?.textContent ?? "";
-        assert(text.includes("diff / patch 로그 확인"), "완료 작업 카드가 보여야 합니다.");
+        assert(hooks.includes("Hook[1]"), "tasks hook 변화가 보여야 합니다.");
       },
     },
     {
       name: "작업 선택 후 메모 수정이 된다",
       async run() {
-        sandbox.querySelector('[data-action="set-filter"][data-filter="all"]')?.click();
-        sandbox.querySelector('[data-action="select-task"][data-id="1"]')?.click();
+        sandbox.querySelector('[data-action="select-task"][data-id="4"]')?.click();
         await flush();
 
         const textarea = sandbox.querySelector('[data-action="update-task-note"]');
@@ -67,16 +70,24 @@ export function runBrowserTests(output) {
         textarea.dispatchEvent(new Event("input", { bubbles: true }));
         await flush();
 
+        const changes = sandbox.querySelector("#interaction-state-changes")?.textContent ?? "";
         assert(
           sandbox.querySelector('[data-action="update-task-note"]')?.value.includes("mount 와 update 설명을 먼저 한다."),
           "메모가 수정되어야 합니다.",
         );
+        assert(changes.includes("note"), "note 변화가 요약 패널에 보여야 합니다.");
       },
     },
     {
-      name: "런타임 패널에 렌더 횟수가 보인다",
+      name: "필터 변경 후 runtime hook delta가 보인다",
       async run() {
+        sandbox.querySelector('[data-action="toggle-task"][data-id="4"]')?.click();
+        sandbox.querySelector('[data-action="set-filter"][data-filter="done"]')?.click();
+        await flush();
+
+        const runtimeHookDelta = sandbox.querySelector("#runtime-hook-delta")?.textContent ?? "";
         const renderCount = Number(sandbox.querySelector("#runtime-render-count")?.textContent ?? "0");
+        assert(runtimeHookDelta.includes("filter"), "runtime hook delta에 filter 변화가 보여야 합니다.");
         assert(renderCount >= 4, "상호작용 후 렌더 횟수가 증가해야 합니다.");
       },
     },

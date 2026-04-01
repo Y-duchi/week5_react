@@ -2,6 +2,15 @@ import { formatPath } from "./core/diff.js";
 import { App, getAppActions } from "./app/App.js";
 import { FunctionComponent } from "./runtime/component.js";
 
+const HOOK_DEBUG_LABELS = [
+  "draftTitle",
+  "tasks",
+  "filter",
+  "selectedTaskId",
+  "nextTaskId",
+  "effectMessage",
+];
+
 function setPanelText(container, id, value) {
   const node = container.querySelector(`#${id}`);
 
@@ -54,7 +63,62 @@ function describeChange(change) {
   }
 }
 
-function syncRuntimePanel(container, commit, instance) {
+function formatHookValue(label, value) {
+  if (label === "tasks" && Array.isArray(value)) {
+    return `${value.length} items`;
+  }
+
+  if (typeof value === "string") {
+    return value || "(빈 문자열)";
+  }
+
+  if (value == null) {
+    return "null";
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `${value.length} items`;
+  }
+
+  return JSON.stringify(value);
+}
+
+function createHookSnapshot(instance) {
+  return HOOK_DEBUG_LABELS.map((label, slot) => ({
+    slot,
+    label,
+    value: formatHookValue(label, instance.hooks[slot]?.value),
+  }));
+}
+
+function summarizeHookDelta(previousSnapshot, nextSnapshot, phase) {
+  if (phase === "mount") {
+    return nextSnapshot.map((item) => `Hook[${item.slot}] ${item.label}: ${item.value}`);
+  }
+
+  return nextSnapshot.flatMap((item) => {
+    const previous = previousSnapshot[item.slot];
+
+    if (!previous || previous.value !== item.value) {
+      return [`Hook[${item.slot}] ${item.label}: ${previous?.value ?? "(없음)"} -> ${item.value}`];
+    }
+
+    return [];
+  });
+}
+
+function syncRuntimePanel(
+  container,
+  commit,
+  instance,
+  previousHookSnapshot,
+  nextHookSnapshot,
+  hookDeltaHistory,
+) {
   const summary = commit?.summary ?? { total: 0, byType: {} };
   const patchMeta = commit?.patchMeta ?? { mutationCount: 0 };
   const updatedAt = commit?.timestamp
@@ -71,7 +135,14 @@ function syncRuntimePanel(container, commit, instance) {
   setPanelText(container, "runtime-updated-at", updatedAt);
 
   const changeLog = container.querySelector("#runtime-change-log");
+  const hookDelta = container.querySelector("#runtime-hook-delta");
   const htmlPreview = container.querySelector("#runtime-html-preview");
+
+  if (hookDelta) {
+    hookDelta.textContent = hookDeltaHistory.length
+      ? hookDeltaHistory.join("\n")
+      : "최근 커밋에서 바뀐 핵심 hook 슬롯이 없습니다.";
+  }
 
   if (changeLog) {
     changeLog.textContent = commit?.changes?.length
@@ -112,12 +183,6 @@ function bindDelegatedEvents(container, getActions) {
         break;
       case "reset-demo":
         actions.resetDemo?.();
-        break;
-      case "advance-presentation":
-        actions.advancePresentation?.();
-        break;
-      case "restart-presentation":
-        actions.restartPresentation?.();
         break;
       default:
         break;
@@ -162,14 +227,37 @@ export function mountApplication(container) {
   }
 
   const removeListeners = bindDelegatedEvents(container, getAppActions);
+  let previousHookSnapshot = [];
+  let hookDeltaHistory = [];
   const instance = new FunctionComponent(App, {}, {
     onCommit(commit, component) {
-      syncRuntimePanel(container, commit, component);
+      const nextHookSnapshot = createHookSnapshot(component);
+      const deltaLines = summarizeHookDelta(
+        previousHookSnapshot,
+        nextHookSnapshot,
+        commit?.phase ?? "mount",
+      );
+
+      if (deltaLines.length) {
+        hookDeltaHistory = [...deltaLines, ...hookDeltaHistory].slice(0, 12);
+      }
+
+      syncRuntimePanel(
+        container,
+        commit,
+        component,
+        previousHookSnapshot,
+        nextHookSnapshot,
+        hookDeltaHistory,
+      );
+      previousHookSnapshot = nextHookSnapshot;
     },
   });
 
   instance.mount(container);
-  syncRuntimePanel(container, instance.lastCommit, instance);
+  const mountedHookSnapshot = createHookSnapshot(instance);
+  syncRuntimePanel(container, instance.lastCommit, instance, [], mountedHookSnapshot, hookDeltaHistory);
+  previousHookSnapshot = mountedHookSnapshot;
 
   const controller = {
     instance,
