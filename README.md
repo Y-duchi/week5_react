@@ -1,4 +1,6 @@
 
+<img width="512" height="512" alt="url_qrcodecreator com_01_42_28" src="https://github.com/user-attachments/assets/cb6952ac-6d2c-425a-8133-c7d4a29541b8" />
+
 # Week5 Mini React
 
 React 없이 **Component**, **Hooks**, **State**, **Virtual DOM + Diff + Patch**의 핵심 흐름을 직접 구현한 Mini React 프로젝트입니다.
