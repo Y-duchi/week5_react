@@ -157,7 +157,7 @@ function TaskInput({ draftTitle, onInput, onSubmit }) {
 
   return h("section", { class: "service-panel service-panel--compact" }, [
     h("div", { class: "section-head" }, [
-      h("div", {}, [h("p", { class: "section-kicker" }, "Create Job"), h("h2", {}, "새 워크아이템 등록")]),
+      h("div", {}, [h("p", { class: "section-kicker" }, "Create Job"), h("h2", {}, "워크아이템 등록")]),
       h("span", { class: "section-chip section-chip--soft" }, "setState -> scheduler"),
     ]),
     h("form", { class: "composer-form", onSubmit }, [
@@ -177,7 +177,7 @@ function TaskInput({ draftTitle, onInput, onSubmit }) {
           type: "submit",
           disabled: isDisabled,
         },
-        "큐에 추가",
+        "등록",
       ),
     ]),
   ]);
@@ -293,7 +293,7 @@ function TaskItem({ task, onToggle, onRemove, onFocusRecent, isRecent }) {
     [
     h("div", { class: "task-item__status" }, [
       h("div", { class: "status-row" }, [
-        h("span", { class: task.completed ? "status-pill status-pill--done" : "status-pill" }, task.completed ? "Resolved" : "Watching"),
+        h("span", { class: task.completed ? "status-pill status-pill--done" : "status-pill" }, task.completed ? "DONE" : "TODO"),
         isRecent ? h("span", { class: "recent-badge" }, "NEW") : null,
       ]),
       h("label", { class: "task-check" }, [
@@ -303,7 +303,7 @@ function TaskItem({ task, onToggle, onRemove, onFocusRecent, isRecent }) {
           "data-task-id": String(task.id),
           onChange: handleToggle,
         }),
-        h("span", { class: "task-check__visual" }, task.completed ? "닫힘" : "추적 중"),
+        h("span", { class: "task-check__visual" }, task.completed ? "완료" : "TODO"),
       ]),
     ]),
     h("div", { class: "task-copy" }, [
@@ -324,7 +324,7 @@ function TaskItem({ task, onToggle, onRemove, onFocusRecent, isRecent }) {
           "data-task-id": String(task.id),
           onClick: handleRemove,
         },
-        "보관",
+        "삭제",
       ),
     ]),
     ],
