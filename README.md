@@ -1,4 +1,4 @@
-<img width="1408" height="768" alt="image" src="https://github.com/user-attachments/assets/1dde713d-519b-4cb5-ab73-babd3392809c" /># Week5 Mini React
+# Week5 Mini React
 
 React 없이 **Component**, **Hooks**, **State**, **Virtual DOM + Diff + Patch**의 핵심 흐름을 직접 구현한 Mini React 프로젝트입니다.
 
