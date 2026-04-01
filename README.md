@@ -167,6 +167,7 @@ npm run test:logic
 - useMemo 캐시 재사용
 - child component에서 hook 사용 금지
 - keyed diff 동작
+- localStorage에 저장된 빈 task 배열 유지
 
 ### 브라우저 테스트
 
@@ -198,3 +199,34 @@ npm run serve
 3. 완료 체크 후 우측 inspector에서 diff 결과와 hook 상태 확인하기
 4. localStorage를 새로고침 뒤에도 유지되는 useEffect 예시로 설명하기
 5. `FunctionComponent`의 `mount()` / `update()`를 중심으로 전체 흐름 설명하기
+
+## 테스트 중 발견된 이슈
+
+아래 이슈들은 엣지 케이스 점검 중 확인된 잔여 과제입니다.
+
+### 1. localStorage 저장 실패 시 앱이 예외로 중단될 수 있음
+
+- 재현 방식:
+  1. `storage.setItem()`이 quota exceeded 같은 예외를 던지는 환경을 가정한다.
+  2. `store.persistState()`를 호출한다.
+- 현재 결과:
+  - 예외가 그대로 바깥으로 전파된다.
+- 원인:
+  - `src/state/store.js`의 `persistState()`에 `try/catch`가 없다.
+- 영향:
+  - 브라우저 저장소 제한, private mode 제약, 권한 문제 상황에서 앱 전체가 깨질 수 있다.
+
+### 2. update가 예약된 뒤 destroy()를 호출해도 예약된 렌더가 계속 실행됨
+
+- 재현 방식:
+  1. `setState()`를 호출해 scheduler 큐에 update를 예약한다.
+  2. flush 전에 `root.destroy()`를 호출한다.
+  3. 예약된 update를 flush 한다.
+- 현재 결과:
+  - destroy 이후에도 `item.update()`가 실행되어 renderCount가 증가한다.
+  - 즉, 이미 파괴된 컴포넌트가 다시 렌더될 수 있다.
+- 원인:
+  - `src/core/scheduler.js`는 큐에서 컴포넌트를 꺼낼 때 destroy 상태를 확인하지 않는다.
+  - `src/core/component.js`의 `destroy()`도 예약된 update를 취소하지 않는다.
+- 영향:
+  - unmount 직후 비동기 업데이트가 남아 있으면 메모리 누수나 예기치 않은 재렌더링이 발생할 수 있다.

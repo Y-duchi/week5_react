@@ -8,26 +8,17 @@
   </head>
   <body>
     <main class="page-shell">
-      <header class="hero-banner">
-        <p class="eyebrow">Week 5 · Virtual DOM to Mini React</p>
-        <h1>Component / State / Hooks를 기존 Diff / Patch 위에 확장</h1>
-        <p class="hero-copy">
-          Week4의 Virtual DOM + Diff + Patch를 유지한 채, 루트 FunctionComponent와
-          `useState` / `useEffect` / `useMemo`를 올린 Todo Dashboard 데모입니다.
-        </p>
-      </header>
-
       <section class="stage-layout">
-        <section class="stage-card">
+        <section class="stage-card stage-card--workspace">
           <div id="app-root"></div>
         </section>
 
-        <aside class="inspector-stack">
-          <section class="inspector-card">
+        <aside class="inspector-stack inspector-stack--runtime">
+          <section class="inspector-card inspector-card--summary">
             <div class="section-head">
               <div>
-                <p class="section-kicker">Runtime</p>
-                <h2>렌더 요약</h2>
+                <p class="section-kicker">Engine Inspector</p>
+                <h2>렌더 파이프라인 요약</h2>
               </div>
             </div>
 
@@ -50,12 +41,10 @@
               </article>
             </div>
 
-            <p id="runtime-summary" class="side-note">
-              첫 렌더 이후 diff / patch 결과가 이곳에 표시됩니다.
-            </p>
+            <p id="runtime-summary" class="side-note">첫 렌더 이후 diff / patch 결과가 이곳에 표시됩니다.</p>
           </section>
 
-          <section class="inspector-card">
+          <section class="inspector-card inspector-card--spotlight">
             <div class="section-head">
               <div>
                 <p class="section-kicker">Root State</p>
@@ -65,17 +54,17 @@
             <pre id="runtime-state" class="code-panel"></pre>
           </section>
 
-          <section class="inspector-card">
+          <section class="inspector-card inspector-card--spotlight">
             <div class="section-head">
               <div>
                 <p class="section-kicker">Hooks</p>
-                <h2>Hook 디버그</h2>
+                <h2>HOOK 디버그</h2>
               </div>
             </div>
             <pre id="runtime-hooks" class="code-panel"></pre>
           </section>
 
-          <section class="inspector-card">
+          <section class="inspector-card inspector-card--spotlight">
             <div class="section-head">
               <div>
                 <p class="section-kicker">Diff / Patch</p>
