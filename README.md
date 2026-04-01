@@ -86,8 +86,11 @@ python3 -m http.server 8000
 
 브라우저 경로:
 
-- 앱: `http://localhost:8000/public/index.html`
-- 브라우저 테스트: `http://localhost:8000/public/tests.html`
+- 앱: `http://localhost:8000/`
+- 테스트: `http://localhost:8000/tests.html`
+
+기존 `public/index.html`, `public/tests.html`도 남겨두었지만,
+가장 안전한 실행 경로는 저장소 루트 기준인 위 두 주소입니다.
 
 ## 테스트
 
