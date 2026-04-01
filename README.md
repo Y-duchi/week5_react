@@ -1,3 +1,4 @@
+
 # Week5 Mini React
 
 React 없이 **Component**, **Hooks**, **State**, **Virtual DOM + Diff + Patch**의 핵심 흐름을 직접 구현한 Mini React 프로젝트입니다.
@@ -121,3 +122,4 @@ week5_react/
 │   └── runTests.js
 ├── package.json
 └── README.md
+
