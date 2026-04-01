@@ -78,9 +78,15 @@ export function App({ store }) {
       search: state.search,
       onToggle: actions.handleTaskToggle,
       onRemove: actions.handleTaskRemove,
+      onEditStart: actions.handleEditStart,
+      onEditInput: actions.handleEditInput,
+      onEditCancel: actions.handleEditCancel,
+      onEditSubmit: actions.handleEditSubmit,
       onFocusRecent: actions.handleRecentTaskFocus,
       activeFilter: state.filter,
       recentTaskId: state.recentTaskId,
+      editingTaskId: state.editingTaskId,
+      editingDraft: state.editingDraft,
     }),
   ]);
 }
@@ -242,7 +248,21 @@ function FilterTabs({ activeFilter, stats, onSelect }) {
   ]);
 }
 
-function TaskList({ tasks, search, onToggle, onRemove, onFocusRecent, activeFilter, recentTaskId }) {
+function TaskList({
+  tasks,
+  search,
+  onToggle,
+  onRemove,
+  onEditStart,
+  onEditInput,
+  onEditCancel,
+  onEditSubmit,
+  onFocusRecent,
+  activeFilter,
+  recentTaskId,
+  editingTaskId,
+  editingDraft,
+}) {
   if (tasks.length === 0) {
     return renderChild(EmptyState, { search, activeFilter });
   }
@@ -260,15 +280,33 @@ function TaskList({ tasks, search, onToggle, onRemove, onFocusRecent, activeFilt
           task,
           onToggle,
           onRemove,
+          onEditStart,
+          onEditInput,
+          onEditCancel,
+          onEditSubmit,
           onFocusRecent,
           isRecent: task.id === recentTaskId,
+          isEditing: task.id === editingTaskId,
+          editingDraft,
         }),
       ),
     ),
   ]);
 }
 
-function TaskItem({ task, onToggle, onRemove, onFocusRecent, isRecent }) {
+function TaskItem({
+  task,
+  onToggle,
+  onRemove,
+  onEditStart,
+  onEditInput,
+  onEditCancel,
+  onEditSubmit,
+  onFocusRecent,
+  isRecent,
+  isEditing,
+  editingDraft,
+}) {
   const className = ["task-item", task.completed ? "is-complete" : "", isRecent ? "is-recent" : ""]
     .filter(Boolean)
     .join(" ");
@@ -281,6 +319,18 @@ function TaskItem({ task, onToggle, onRemove, onFocusRecent, isRecent }) {
   const handleRemove = (event) => {
     event.stopPropagation();
     onRemove(event);
+  };
+  const handleEditStart = (event) => {
+    event.stopPropagation();
+    onEditStart(event);
+  };
+  const handleEditCancel = (event) => {
+    event.stopPropagation();
+    onEditCancel(event);
+  };
+  const handleEditSubmit = (event) => {
+    event.stopPropagation();
+    onEditSubmit(event);
   };
 
   return h(
@@ -307,7 +357,41 @@ function TaskItem({ task, onToggle, onRemove, onFocusRecent, isRecent }) {
       ]),
     ]),
     h("div", { class: "task-copy" }, [
-      h("strong", { class: "task-title" }, task.title),
+      isEditing
+        ? h("form", { class: "task-edit-form", onSubmit: handleEditSubmit, "data-task-id": String(task.id) }, [
+            h("input", {
+              id: `task-edit-input-${task.id}`,
+              class: "field-input field-input--inline",
+              type: "text",
+              value: editingDraft,
+              "data-task-id": String(task.id),
+              placeholder: "수정할 제목을 입력하세요",
+              onInput: onEditInput,
+            }),
+            h("div", { class: "task-edit-actions" }, [
+              h(
+                "button",
+                {
+                  class: "primary-button primary-button--inline",
+                  type: "submit",
+                  "data-task-id": String(task.id),
+                  disabled: editingDraft.trim().length === 0,
+                },
+                "저장",
+              ),
+              h(
+                "button",
+                {
+                  class: "ghost-button ghost-button--inline",
+                  type: "button",
+                  "data-task-id": String(task.id),
+                  onClick: handleEditCancel,
+                },
+                "취소",
+              ),
+            ]),
+          ])
+        : h("strong", { class: "task-title" }, task.title),
       h("p", { class: "task-description" }, buildTaskDescription(task)),
       h("div", { class: "task-meta" }, [
         h("span", { class: "task-tag" }, task.category),
@@ -316,6 +400,16 @@ function TaskItem({ task, onToggle, onRemove, onFocusRecent, isRecent }) {
       ]),
     ]),
     h("div", { class: "task-actions" }, [
+      h(
+        "button",
+        {
+          class: "ghost-button ghost-button--inline",
+          type: "button",
+          "data-task-id": String(task.id),
+          onClick: handleEditStart,
+        },
+        isEditing ? "편집 중" : "수정",
+      ),
       h(
         "button",
         {
@@ -481,6 +575,96 @@ function createActions(setState) {
         };
       });
     },
+
+    handleEditStart(event) {
+      const taskId = Number.parseInt(event.currentTarget.dataset.taskId ?? "", 10);
+
+      if (!Number.isFinite(taskId)) {
+        return;
+      }
+
+      setState((previousState) => {
+        const target = previousState.tasks.find((task) => task.id === taskId);
+
+        if (!target) {
+          return previousState;
+        }
+
+        if (previousState.editingTaskId === taskId && previousState.editingDraft === target.title) {
+          return previousState;
+        }
+
+        return {
+          ...previousState,
+          editingTaskId: taskId,
+          editingDraft: target.title,
+          lastAction: `편집 시작 -> ${target.title}`,
+        };
+      });
+    },
+
+    handleEditInput(event) {
+      setState((previousState) => ({
+        ...previousState,
+        editingDraft: event.target.value,
+        lastAction: "편집 버퍼 업데이트",
+      }));
+    },
+
+    handleEditCancel() {
+      setState((previousState) => {
+        if (previousState.editingTaskId == null && previousState.editingDraft.length === 0) {
+          return previousState;
+        }
+
+        return {
+          ...previousState,
+          editingTaskId: null,
+          editingDraft: "",
+          lastAction: "편집 취소",
+        };
+      });
+    },
+
+    handleEditSubmit(event) {
+      event.preventDefault();
+      const taskId = Number.parseInt(event.currentTarget.dataset.taskId ?? "", 10);
+
+      if (!Number.isFinite(taskId)) {
+        return;
+      }
+
+      setState((previousState) => {
+        const target = previousState.tasks.find((task) => task.id === taskId);
+        const nextTitle = previousState.editingDraft.trim();
+
+        if (!target || !nextTitle) {
+          return previousState;
+        }
+
+        if (target.title === nextTitle) {
+          return {
+            ...previousState,
+            editingTaskId: null,
+            editingDraft: "",
+            lastAction: `편집 종료 -> ${target.title}`,
+          };
+        }
+
+        return {
+          ...previousState,
+          editingTaskId: null,
+          editingDraft: "",
+          tasks: previousState.tasks.map((task) =>
+            task.id === taskId
+              ? { ...task, title: nextTitle, category: classifyTask(nextTitle) }
+              : task,
+          ),
+          lastAction: `워크아이템 수정 -> ${nextTitle}`,
+          recentTaskId: taskId,
+        };
+      });
+    },
   };
 }
 
@@ -555,6 +739,8 @@ function compactState(state) {
 
   return {
     draftTitle: state.draftTitle,
+    editingTaskId: state.editingTaskId,
+    editingDraft: state.editingDraft,
     search: state.search,
     filter: state.filter,
     nextId: state.nextId,

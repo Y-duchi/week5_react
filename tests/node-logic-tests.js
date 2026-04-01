@@ -420,6 +420,69 @@ const tests = [
     },
   },
   {
+    name: "edit draft changes reuse memoized task selectors until submit",
+    async run() {
+      const store = createAppStore();
+      const component = new FunctionComponent(App, {
+        props: { store },
+        store,
+      });
+
+      component.mount();
+
+      const editButton = findNode(
+        component.currentVdom,
+        (node) => node?.type === "element" && node.tagName === "button" && node.children?.[0]?.value === "수정",
+      );
+      editButton.attrs.onClick({ currentTarget: { dataset: { taskId: "1" } }, stopPropagation() {} });
+      await flushScheduledUpdates();
+
+      const memoAfterStart = component.getHookDebugInfo()[2];
+      const statsAfterStart = component.getHookDebugInfo()[3];
+
+      const editInput = findNode(
+        component.currentVdom,
+        (node) => node?.type === "element" && node.attrs?.id === "task-edit-input-1",
+      );
+      const editForm = findNode(
+        component.currentVdom,
+        (node) => node?.type === "element" && node.tagName === "form" && node.attrs?.["data-task-id"] === "1",
+      );
+
+      editInput.attrs.onInput({ target: { value: "updated runtime task" } });
+      await flushScheduledUpdates();
+
+      const memoAfterDraft = component.getHookDebugInfo()[2];
+      const statsAfterDraft = component.getHookDebugInfo()[3];
+
+      assert(
+        memoAfterDraft.recomputeCount === memoAfterStart.recomputeCount,
+        "editing draft should not recompute filtered tasks before submit",
+      );
+      assert(
+        statsAfterDraft.recomputeCount === statsAfterStart.recomputeCount,
+        "editing draft should not recompute stats before submit",
+      );
+
+      editForm.attrs.onSubmit({
+        preventDefault() {},
+        stopPropagation() {},
+        currentTarget: { dataset: { taskId: "1" } },
+      });
+      await flushScheduledUpdates();
+
+      const memoAfterSubmit = component.getHookDebugInfo()[2];
+      const nextState = component.getStateSnapshot();
+
+      assert(
+        memoAfterSubmit.recomputeCount === memoAfterDraft.recomputeCount + 1,
+        "submitting an edit should recompute filtered tasks",
+      );
+      assert(nextState.tasks[0].title === "updated runtime task", "submit should update the task title");
+      assert(nextState.editingTaskId === null, "submit should exit edit mode");
+    },
+  },
+  {
     name: "persist failures do not crash the app state flow",
     async run() {
       const storage = {

@@ -80,6 +80,8 @@ export function createInitialAppState({ storage, storageKey = APP_STORAGE_KEY, s
   return {
     tasks,
     draftTitle: "",
+    editingTaskId: null,
+    editingDraft: "",
     search: "",
     filter: "all",
     nextId: deriveNextId(tasks),
@@ -149,6 +151,8 @@ function sanitizeState(state) {
   return {
     tasks,
     draftTitle: String(state?.draftTitle ?? ""),
+    editingTaskId: Number.isFinite(Number(state?.editingTaskId)) ? Number(state.editingTaskId) : null,
+    editingDraft: String(state?.editingDraft ?? ""),
     search: String(state?.search ?? ""),
     filter: FILTER_OPTIONS.includes(state?.filter) ? state.filter : "all",
     nextId: Math.max(Number(state?.nextId ?? 0), deriveNextId(tasks)),
