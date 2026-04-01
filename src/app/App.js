@@ -3,6 +3,8 @@ import {
   filterOptions,
   initialTasks,
   pipelineSteps,
+  presentationSteps,
+  presentationTaskSeed,
   requirementCards,
   studentProfile,
 } from "../data/content.js";
@@ -16,6 +18,7 @@ import {
   FlowSnapshotPanel,
   HeaderPanel,
   InspectorColumnIntro,
+  PresentationPanel,
   RequirementGrid,
   RuntimePanelShell,
   TaskEditorPanel,
@@ -65,6 +68,8 @@ export function App() {
   const [filter, setFilter] = useState("all");
   const [selectedTaskId, setSelectedTaskId] = useState(initialTasks[0]?.id ?? null);
   const [nextTaskId, setNextTaskId] = useState(initialTasks.length + 1);
+  const [presentationStep, setPresentationStep] = useState(0);
+  const [presentationTaskId, setPresentationTaskId] = useState(null);
   const [actionLog, setActionLog] = useState([formatLog("mount(): 초기 렌더링 완료")]);
   const [effectMessage, setEffectMessage] = useState("useEffect가 아직 실행되지 않았습니다.");
 
@@ -80,6 +85,10 @@ export function App() {
 
     return parts.length > 1 ? parts.slice(1).join(" - ") : current;
   }, [actionLog]);
+  const activePresentation = useMemo(
+    () => presentationSteps[presentationStep] ?? presentationSteps[0],
+    [presentationStep],
+  );
   const stateSnapshot = useMemo(
     () =>
       JSON.stringify(
@@ -88,6 +97,8 @@ export function App() {
           filter,
           selectedTaskId,
           nextTaskId,
+          presentationStep,
+          presentationTaskId,
           totalTasks: tasks.length,
           completedTasks: tasks.filter((task) => task.done).length,
           logEntries: actionLog.length,
@@ -95,7 +106,16 @@ export function App() {
         null,
         2,
       ),
-    [draftTitle, filter, selectedTaskId, nextTaskId, tasks, actionLog.length],
+    [
+      draftTitle,
+      filter,
+      selectedTaskId,
+      nextTaskId,
+      presentationStep,
+      presentationTaskId,
+      tasks,
+      actionLog.length,
+    ],
   );
   const stateFacts = useMemo(
     () => [
@@ -103,8 +123,9 @@ export function App() {
       { label: "selected", value: selectedTask?.title ?? "없음" },
       { label: "tasks", value: `${tasks.length}개` },
       { label: "done", value: `${stats.completed}개` },
+      { label: "step", value: activePresentation.title },
     ],
-    [filter, selectedTask?.title, tasks.length, stats.completed],
+    [filter, selectedTask?.title, tasks.length, stats.completed, activePresentation.title],
   );
   const computedFacts = useMemo(
     () => [
@@ -122,10 +143,22 @@ export function App() {
       { index: 2, name: "filter", value: filter },
       { index: 3, name: "selectedTaskId", value: String(selectedTaskId ?? "null") },
       { index: 4, name: "nextTaskId", value: String(nextTaskId) },
-      { index: 5, name: "actionLog", value: `${actionLog.length} entries` },
-      { index: 6, name: "effectMessage", value: effectMessage },
+      { index: 5, name: "presentationStep", value: String(presentationStep) },
+      { index: 6, name: "presentationTaskId", value: String(presentationTaskId ?? "null") },
+      { index: 7, name: "actionLog", value: `${actionLog.length} entries` },
+      { index: 8, name: "effectMessage", value: effectMessage },
     ],
-    [draftTitle, tasks.length, filter, selectedTaskId, nextTaskId, actionLog.length, effectMessage],
+    [
+      draftTitle,
+      tasks.length,
+      filter,
+      selectedTaskId,
+      nextTaskId,
+      presentationStep,
+      presentationTaskId,
+      actionLog.length,
+      effectMessage,
+    ],
   );
 
   useEffect(() => {
@@ -143,6 +176,82 @@ export function App() {
 
   function appendLog(message) {
     setActionLog((logs) => [formatLog(message), ...logs].slice(0, 8));
+  }
+
+  function resetBoard(logMessage = "resetDemo(): 여러 root state를 한 번에 초기화했습니다.") {
+    setDraftTitle("");
+    setTasks(initialTasks);
+    setFilter("all");
+    setSelectedTaskId(initialTasks[0]?.id ?? null);
+    setNextTaskId(initialTasks.length + 1);
+    setPresentationStep(0);
+    setPresentationTaskId(null);
+    setActionLog([formatLog(logMessage)]);
+  }
+
+  function runPresentationStep() {
+    const focusId = presentationTaskId;
+
+    switch (presentationStep) {
+      case 0:
+        setDraftTitle(presentationTaskSeed.title);
+        setPresentationStep(1);
+        appendLog("시연 1단계: input 값이 draftTitle state에 저장되었습니다.");
+        return;
+      case 1: {
+        const createdId = nextTaskId;
+        const title = draftTitle.trim() || presentationTaskSeed.title;
+        const nextTask = {
+          id: createdId,
+          title,
+          category: "demo",
+          done: false,
+          note: presentationTaskSeed.note,
+        };
+
+        setTasks((currentTasks) => [...currentTasks, nextTask]);
+        setSelectedTaskId(createdId);
+        setNextTaskId(createdId + 1);
+        setPresentationTaskId(createdId);
+        setDraftTitle("");
+        setPresentationStep(2);
+        appendLog("시연 2단계: tasks state에 새 작업이 추가되었습니다.");
+        return;
+      }
+      case 2:
+        if (focusId != null) {
+          setSelectedTaskId(focusId);
+          appendLog("시연 3단계: selectedTaskId가 바뀌면서 설명 패널이 교체됩니다.");
+        }
+        setPresentationStep(3);
+        return;
+      case 3:
+        if (focusId != null) {
+          setTasks((currentTasks) =>
+            currentTasks.map((task) =>
+              task.id === focusId ? { ...task, note: presentationTaskSeed.updatedNote } : task,
+            ),
+          );
+          appendLog("시연 4단계: tasks 안의 note 값이 바뀌었습니다.");
+        }
+        setPresentationStep(4);
+        return;
+      case 4:
+        if (focusId != null) {
+          setTasks((currentTasks) =>
+            currentTasks.map((task) =>
+              task.id === focusId ? { ...task, done: true } : task,
+            ),
+          );
+          setSelectedTaskId(focusId);
+          setFilter("done");
+          appendLog("시연 5단계: 완료 처리 후 done 필터를 적용했습니다.");
+        }
+        setPresentationStep(5);
+        return;
+      default:
+        appendLog("시연 마지막 단계입니다. 처음부터 버튼으로 다시 보여줄 수 있습니다.");
+    }
   }
 
   appActions = {
@@ -218,12 +327,13 @@ export function App() {
       );
     },
     resetDemo() {
-      setDraftTitle("");
-      setTasks(initialTasks);
-      setFilter("all");
-      setSelectedTaskId(initialTasks[0]?.id ?? null);
-      setNextTaskId(initialTasks.length + 1);
-      setActionLog([formatLog("resetDemo(): 여러 root state를 한 번에 초기화했습니다.")]);
+      resetBoard();
+    },
+    advancePresentation() {
+      runPresentationStep();
+    },
+    restartPresentation() {
+      resetBoard("시연 모드를 처음 상태로 되돌렸습니다.");
     },
   };
 
@@ -235,6 +345,10 @@ export function App() {
         profile: studentProfile,
         totalTasks: stats.total,
         completedTasks: stats.completed,
+      }),
+      h(PresentationPanel, {
+        steps: presentationSteps,
+        currentStep: presentationStep,
       }),
       h(FlowSnapshotPanel, {
         latestAction,

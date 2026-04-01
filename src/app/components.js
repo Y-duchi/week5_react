@@ -90,6 +90,79 @@ export function HeaderPanel({ profile, totalTasks, completedTasks }) {
   );
 }
 
+export function PresentationPanel({ steps, currentStep }) {
+  const activeStep = steps[currentStep] ?? steps[0];
+
+  return h(
+    "section",
+    { className: "script-panel" },
+    h(
+      "div",
+      { className: "script-header" },
+      h(
+        "div",
+        { className: "script-copy" },
+        h("p", { className: "eyebrow" }, "시연 모드"),
+        h("h2", { className: "section-title" }, "다음 단계만 눌러서 천천히 보여주기"),
+        h(
+          "p",
+          { className: "demo-hint" },
+          "발표할 때는 아래 버튼으로 한 단계씩 넘기면 됩니다. 각 단계마다 실제 state와 화면이 같이 바뀝니다.",
+        ),
+      ),
+      h(
+        "div",
+        { className: "script-controls" },
+        h(
+          "button",
+          {
+            type: "button",
+            className: "primary-button",
+            "data-action": "advance-presentation",
+          },
+          currentStep >= steps.length - 1 ? "마지막 단계" : "다음 단계",
+        ),
+        h(
+          "button",
+          {
+            type: "button",
+            className: "ghost-button",
+            "data-action": "restart-presentation",
+          },
+          "처음부터",
+        ),
+      ),
+    ),
+    h(
+      "div",
+      { className: "script-focus" },
+      h("span", { className: "script-focus-label" }, `현재 단계 ${activeStep.id}/${steps.length - 1}`),
+      h("strong", { className: "script-focus-title" }, activeStep.title),
+      h("p", { className: "script-focus-text" }, activeStep.summary),
+    ),
+    h(
+      "div",
+      { className: "script-steps" },
+      ...steps.map((step, index) => {
+        const className =
+          index === currentStep
+            ? "script-step is-active"
+            : index < currentStep
+              ? "script-step is-done"
+              : "script-step";
+
+        return h(
+          "article",
+          { className },
+          h("span", { className: "script-step-number" }, String(step.id)),
+          h("strong", { className: "script-step-title" }, step.title),
+          h("p", { className: "script-step-text" }, step.summary),
+        );
+      }),
+    ),
+  );
+}
+
 export function FlowSnapshotPanel({ latestAction, stateFacts, computedFacts, effectMessage }) {
   return h(
     "section",

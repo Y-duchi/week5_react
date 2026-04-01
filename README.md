@@ -4,7 +4,7 @@
 
 Week 3의 Virtual DOM / Diff / Patch를 바탕으로, Week 5 요구사항인 `FunctionComponent`, `useState`, `useEffect`, `useMemo`, 루트 전용 state 관리를 직접 구현한 Mini React 데모입니다.
 
-이 저장소의 목표는 "예쁜 화면"보다 "클릭 한 번으로 state, hooks, diff / patch를 바로 설명할 수 있는 화면"입니다.
+이 저장소의 목표는 "예쁜 화면"보다 "다음 단계 버튼만 눌러도 state, hooks, diff / patch를 차례대로 설명할 수 있는 화면"입니다.
 
 ## 이 데모에서 바로 설명할 수 있는 것
 
@@ -16,13 +16,13 @@ Week 3의 Virtual DOM / Diff / Patch를 바탕으로, Week 5 요구사항인 `Fu
 
 ## 화면 구성
 
-### 1. 상단 요약
+### 1. 시연 모드
 
-- 무엇을 클릭하면 되는지
-- 과제 핵심 제약이 무엇인지
-- 발표 순서를 어떤 흐름으로 잡으면 되는지
+- `다음 단계`
+- `처음부터`
+- 현재 시연 단계 설명
 
-첫 화면에서 바로 보여줍니다.
+발표할 때 한 단계씩 천천히 넘기면서 설명할 수 있습니다.
 
 ### 2. 요구사항 대응 리스트
 
@@ -55,10 +55,11 @@ Week 3의 Virtual DOM / Diff / Patch를 바탕으로, Week 5 요구사항인 `Fu
 
 즉, 화면을 이렇게 설명하면 됩니다.
 
-1. 왼쪽에서 작업을 하나 추가합니다.
-2. 필터나 완료 상태를 바꿉니다.
-3. 오른쪽에서 root state와 hook slot 변화를 보여줍니다.
-4. 마지막으로 diff / patch 로그를 보여주며 전체 흐름을 설명합니다.
+1. `다음 단계`를 눌러 input 값이 draftTitle state에 저장되는 걸 보여줍니다.
+2. 다시 눌러 tasks state에 새 작업이 추가되는 걸 보여줍니다.
+3. 다시 눌러 선택 상태와 메모 수정이 어떻게 이어지는지 보여줍니다.
+4. 마지막 단계에서 완료 처리와 filter 적용까지 보여줍니다.
+5. 오른쪽 패널에서 root state, hooks, diff / patch를 같이 설명합니다.
 
 ## 요구사항 대응
 

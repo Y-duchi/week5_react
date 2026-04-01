@@ -77,6 +77,10 @@ pre {
 .hero-stats,
 .hero-check-row,
 .hero-steps,
+.script-header,
+.script-copy,
+.script-controls,
+.script-steps,
 .flow-grid,
 .requirement-list,
 .workspace-layout,
@@ -107,6 +111,7 @@ pre {
 }
 
 .hero-panel,
+.script-panel,
 .requirement-panel,
 .demo-card,
 .side-card,
@@ -119,6 +124,7 @@ pre {
 }
 
 .hero-panel,
+.script-panel,
 .requirement-panel,
 .demo-card,
 .side-card,
@@ -261,6 +267,98 @@ pre {
   border-radius: var(--radius-xl);
   background: linear-gradient(180deg, #fff7f0 0%, #fffdf9 100%);
   box-shadow: var(--shadow);
+}
+
+.script-panel {
+  display: grid;
+  gap: 16px;
+  background: linear-gradient(180deg, #fff3e6 0%, #fffdf9 100%);
+}
+
+.script-header {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.script-copy {
+  gap: 6px;
+}
+
+.script-controls {
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+}
+
+.script-focus {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid #efcfbf;
+  border-radius: var(--radius-lg);
+  background: #fff9f2;
+}
+
+.script-focus-label {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.script-focus-title {
+  font-size: 1.2rem;
+}
+
+.script-focus-text {
+  margin: 0;
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+
+.script-steps {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.script-step {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.72);
+  opacity: 0.68;
+  transition: transform 160ms ease, opacity 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.script-step.is-active {
+  opacity: 1;
+  border-color: var(--accent);
+  background: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(168, 79, 39, 0.12);
+}
+
+.script-step.is-done {
+  opacity: 1;
+  border-color: #d7c4b7;
+  background: #fff7ef;
+}
+
+.script-step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: #f1dfd3;
+  color: var(--accent-dark);
+  font-weight: 800;
+}
+
+.script-step-title {
+  font-size: 1rem;
 }
 
 .flow-grid {
@@ -560,9 +658,11 @@ pre {
 @media (max-width: 1180px) {
   .workspace-layout,
   .hero-panel,
+  .script-header,
   .filter-row,
   .flow-grid,
-  .requirement-row {
+  .requirement-row,
+  .script-steps {
     grid-template-columns: 1fr;
   }
 
@@ -579,6 +679,7 @@ pre {
   }
 
   .hero-panel,
+  .script-panel,
   .flow-panel,
   .requirement-panel,
   .demo-card,
@@ -595,7 +696,8 @@ pre {
   .hook-grid,
   .pill-row,
   .composer-row,
-  .task-actions {
+  .task-actions,
+  .script-controls {
     grid-template-columns: 1fr;
   }
 

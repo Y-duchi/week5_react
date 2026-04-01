@@ -113,6 +113,12 @@ function bindDelegatedEvents(container, getActions) {
       case "reset-demo":
         actions.resetDemo?.();
         break;
+      case "advance-presentation":
+        actions.advancePresentation?.();
+        break;
+      case "restart-presentation":
+        actions.restartPresentation?.();
+        break;
       default:
         break;
     }
