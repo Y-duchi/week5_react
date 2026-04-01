@@ -155,7 +155,7 @@ function sanitizeState(state) {
 
 function sanitizeTasks(tasks) {
   return tasks.map((task, index) => ({
-    id: Number(task.id ?? index + 1),
+    id: sanitizeTaskId(task.id, index),
     title: String(task.title ?? `Task ${index + 1}`).trim(),
     category: String(task.category ?? "General"),
     completed: Boolean(task.completed),
@@ -164,8 +164,16 @@ function sanitizeTasks(tasks) {
 }
 
 function deriveNextId(tasks) {
-  const maxId = tasks.reduce((currentMax, task) => Math.max(currentMax, Number(task.id ?? 0)), 0);
+  const maxId = tasks.reduce((currentMax, task) => {
+    const normalizedId = Number(task.id);
+    return Number.isFinite(normalizedId) ? Math.max(currentMax, normalizedId) : currentMax;
+  }, 0);
   return maxId + 1;
+}
+
+function sanitizeTaskId(rawId, index) {
+  const normalizedId = Number(rawId);
+  return Number.isFinite(normalizedId) ? normalizedId : index + 1;
 }
 
 function summarizeChange(change) {

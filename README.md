@@ -155,6 +155,7 @@ python -m http.server 8000
 - child component에서 hook 사용 금지
 - keyed diff 동작
 - localStorage에 저장된 빈 task 배열 유지
+- localStorage에 저장된 잘못된 task id 복구
 
 브라우저 테스트에서는 아래를 검증합니다.
 
@@ -165,6 +166,24 @@ python -m http.server 8000
 - 검색 반영
 - localStorage 저장
 - memoized 계산 재평가
+
+## 이번에 찾은 엣지 케이스
+
+### localStorage에 잘못된 task id가 들어온 경우
+
+실사용 환경에서는 storage payload가 항상 정상이라고 가정할 수 없습니다. 이전 버전 데이터, 수동 수정, 잘못된 마이그레이션 때문에 `task.id`가 숫자가 아닌 문자열로 들어올 수 있습니다.
+
+이 경우 기존 구현에서는 아래 문제가 연쇄적으로 발생했습니다.
+
+- `Number("bad-id")`가 `NaN`이 되어 기존 task id가 깨짐
+- `nextId` 계산도 `NaN`이 되어 이후 추가되는 새 task id도 함께 깨짐
+- keyed diff / recentTaskId / 저장 데이터 일관성이 모두 흔들릴 수 있음
+
+현재는 hydration 단계에서 잘못된 id를 안전한 숫자 id로 보정하고, 회귀 테스트로 아래 시나리오를 검증합니다.
+
+1. 잘못된 id를 가진 저장 데이터를 읽는다.
+2. 초기 state가 숫자 id로 복구되는지 확인한다.
+3. 새 task를 추가했을 때 다음 id가 정상적으로 증가하는지 확인한다.
 
 ## 구현 포인트 정리
 

@@ -8,7 +8,8 @@ import { diffTrees } from "../src/core/diff.js";
 import { useEffect, useMemo, useState } from "../src/core/hooks.js";
 import { flushScheduledUpdates } from "../src/core/scheduler.js";
 import { h } from "../src/core/vdom.js";
-import { createInitialAppState, createMemoryStorage } from "../src/state/store.js";
+import { createInitialAppState, createMemoryStorage, createAppStore } from "../src/state/store.js";
+import { App } from "../src/ui/appUi.js";
 
 const tests = [
   {
@@ -209,6 +210,43 @@ const tests = [
       assert(initialState.nextId === 1, "empty queue should restart ids from 1");
     },
   },
+  {
+    name: "invalid stored task ids recover to numeric ids before adding new work",
+    async run() {
+      const storage = createMemoryStorage({
+        "virtual-dom:week5:task-manager": JSON.stringify({
+          tasks: [{ id: "bad-id", title: "legacy payload" }],
+        }),
+      });
+      const store = createAppStore({ storage });
+      const component = new FunctionComponent(App, {
+        props: { store },
+        store,
+      });
+
+      component.mount();
+
+      const draftInput = findNode(
+        component.currentVdom,
+        (node) => node?.type === "element" && node.attrs?.id === "task-title-input",
+      );
+      const form = findNode(
+        component.currentVdom,
+        (node) => node?.type === "element" && node.tagName === "form",
+      );
+
+      draftInput.attrs.onInput({ target: { value: "new work item" } });
+      await flushScheduledUpdates();
+      form.attrs.onSubmit({ preventDefault() {} });
+      await flushScheduledUpdates();
+
+      const state = component.getStateSnapshot();
+
+      assert(state.tasks[0].id === 2, "new task should receive the next numeric id");
+      assert(state.tasks[1].id === 1, "stored malformed id should be normalized during hydration");
+      assert(state.nextId === 3, "nextId should remain numeric after recovery");
+    },
+  },
 ];
 
 const failures = [];
@@ -231,4 +269,28 @@ function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
   }
+}
+
+function findNode(node, predicate) {
+  if (!node) {
+    return null;
+  }
+
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      const found = findNode(child, predicate);
+
+      if (found) {
+        return found;
+      }
+    }
+
+    return null;
+  }
+
+  if (predicate(node)) {
+    return node;
+  }
+
+  return findNode(node.children ?? [], predicate);
 }
