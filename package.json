@@ -1,0 +1,9 @@
+{
+  "name": "week5-react-engine",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "serve": "python3 -m http.server 8000",
+    "test": "node tests/logic-tests.js"
+  }
+}
