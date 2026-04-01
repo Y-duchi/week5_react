@@ -4,6 +4,11 @@
   "type": "module",
   "scripts": {
     "serve": "python3 -m http.server 8000",
-    "test": "node tests/logic-tests.js"
+    "test": "npm run test:logic && npm run test:smoke",
+    "test:logic": "node tests/logic-tests.js",
+    "test:smoke": "node tests/jsdom-smoke.js"
+  },
+  "dependencies": {
+    "jsdom": "^29.0.1"
   }
 }
