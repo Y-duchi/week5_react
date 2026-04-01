@@ -38,12 +38,16 @@ export function createAppStore(options = {}) {
     persistState(nextState) {
       lastPersistedState = sanitizeState(nextState);
 
-      storage.setItem(
-        storageKey,
-        JSON.stringify({
-          tasks: lastPersistedState.tasks,
-        }),
-      );
+      try {
+        storage.setItem(
+          storageKey,
+          JSON.stringify({
+            tasks: lastPersistedState.tasks,
+          }),
+        );
+      } catch {
+        // Ignore persistence failures so the in-memory UI can keep working.
+      }
     },
 
     recordCommit(commit) {
@@ -76,6 +80,8 @@ export function createInitialAppState({ storage, storageKey = APP_STORAGE_KEY, s
   return {
     tasks,
     draftTitle: "",
+    editingTaskId: null,
+    editingDraft: "",
     search: "",
     filter: "all",
     nextId: deriveNextId(tasks),
@@ -145,6 +151,8 @@ function sanitizeState(state) {
   return {
     tasks,
     draftTitle: String(state?.draftTitle ?? ""),
+    editingTaskId: Number.isFinite(Number(state?.editingTaskId)) ? Number(state.editingTaskId) : null,
+    editingDraft: String(state?.editingDraft ?? ""),
     search: String(state?.search ?? ""),
     filter: FILTER_OPTIONS.includes(state?.filter) ? state.filter : "all",
     nextId: Math.max(Number(state?.nextId ?? 0), deriveNextId(tasks)),
@@ -154,18 +162,59 @@ function sanitizeState(state) {
 }
 
 function sanitizeTasks(tasks) {
-  return tasks.map((task, index) => ({
-    id: Number(task.id ?? index + 1),
-    title: String(task.title ?? `Task ${index + 1}`).trim(),
-    category: String(task.category ?? "General"),
-    completed: Boolean(task.completed),
-    createdAt: String(task.createdAt ?? "2026-04-01"),
-  }));
+  const seenIds = new Set();
+
+  return tasks.map((task, index) => {
+    const safeTask = task && typeof task === "object" ? task : {};
+    const normalizedTitle = sanitizeTextValue(safeTask.title, `Task ${index + 1}`);
+
+    return {
+      id: sanitizeTaskId(safeTask.id, index, seenIds),
+      title: normalizedTitle,
+      category: sanitizeTextValue(safeTask.category, "General"),
+      completed: Boolean(safeTask.completed),
+      createdAt: sanitizeTextValue(safeTask.createdAt, "2026-04-01"),
+    };
+  });
 }
 
 function deriveNextId(tasks) {
-  const maxId = tasks.reduce((currentMax, task) => Math.max(currentMax, Number(task.id ?? 0)), 0);
+  const maxId = tasks.reduce((currentMax, task) => {
+    const normalizedId = Number(task.id);
+    return Number.isFinite(normalizedId) ? Math.max(currentMax, normalizedId) : currentMax;
+  }, 0);
   return maxId + 1;
+}
+
+function sanitizeTaskId(rawId, index, seenIds) {
+  const normalizedId = Number(rawId);
+
+  if (Number.isInteger(normalizedId) && normalizedId > 0 && !seenIds.has(normalizedId)) {
+    seenIds.add(normalizedId);
+    return normalizedId;
+  }
+
+  let fallbackId = index + 1;
+
+  while (seenIds.has(fallbackId)) {
+    fallbackId += 1;
+  }
+
+  seenIds.add(fallbackId);
+  return fallbackId;
+}
+
+function sanitizeTextValue(rawValue, fallbackValue) {
+  if (typeof rawValue === "string") {
+    const trimmed = rawValue.trim();
+    return trimmed || fallbackValue;
+  }
+
+  if (typeof rawValue === "number" || typeof rawValue === "boolean") {
+    return String(rawValue);
+  }
+
+  return fallbackValue;
 }
 
 function summarizeChange(change) {

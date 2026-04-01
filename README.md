@@ -95,6 +95,8 @@ hook는 호출 순서를 기반으로 `hooks[index]`를 재사용합니다. 이 
 - HOOK 디버그
 - 변경 로그
 
+이번 버전에서는 `수정` 기능도 추가해서, 입력 버퍼만 바뀌는 동안에는 memoized 계산이 재사용되고 실제 저장 시점에만 task 연산이 다시 도는 흐름을 데모로 보여줄 수 있습니다.
+
 ## 프로젝트 구조
 
 ```text
@@ -143,28 +145,6 @@ python -m http.server 8000
 
 - 메인 데모: [http://localhost:8000/public/index.html](http://localhost:8000/public/index.html)
 - 브라우저 테스트: [http://localhost:8000/public/tests.html](http://localhost:8000/public/tests.html)
-
-## 테스트 항목
-
-현재 Node 로직 테스트에서는 아래를 검증합니다.
-
-- useState 상태 유지
-- batched setState
-- useEffect deps / cleanup
-- useMemo 캐시 재사용
-- child component에서 hook 사용 금지
-- keyed diff 동작
-- localStorage에 저장된 빈 task 배열 유지
-
-브라우저 테스트에서는 아래를 검증합니다.
-
-- patch 실제 DOM 반영
-- 항목 추가
-- 완료 토글
-- 필터 변경
-- 검색 반영
-- localStorage 저장
-- memoized 계산 재평가
 
 ## 구현 포인트 정리
 
@@ -215,13 +195,13 @@ UI는 역할 기준으로 분리했습니다.
 
 다음 항목들은 아직 남아 있는 개선 포인트입니다.
 
-### 1. localStorage 저장 실패 예외 처리 부족
+### 1. storage payload 스키마 검증 범위
 
-`storage.setItem()`이 실패하는 환경에서는 예외가 그대로 전파될 수 있습니다.
+현재는 `task.id` 중심으로 복구 로직을 넣었지만, title/category/createdAt까지 포함한 전체 schema validation은 아직 단순한 편입니다.
 
-### 2. destroy 이후 예약된 update 처리
+### 2. 브라우저 기반 회귀 테스트 확장
 
-`destroy()` 이후에도 이미 예약된 update가 실행될 수 있습니다. 현재 scheduler는 destroy 상태를 별도로 확인하지 않습니다.
+지금 추가한 edge case 대부분은 Node 로직 테스트로 검증하고 있습니다. storage 실패나 destroy 이후 update 같은 흐름은 브라우저 상호작용 기반 시나리오로도 확장해볼 수 있습니다.
 
 ## 참고
 

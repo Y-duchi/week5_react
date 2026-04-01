@@ -119,6 +119,41 @@ await runTest("useEffect persists tasks into localStorage", async () => {
   }
 });
 
+await runTest("Todo app edits an existing task and delays memo recompute until save", async () => {
+  const runtime = createMountedApp();
+
+  try {
+    const editButton = runtime.host.querySelector('.task-actions button[type="button"]');
+    editButton.click();
+    await flushScheduledUpdates();
+
+    const memoAfterStart = runtime.runtime.rootComponent.getHookDebugInfo()[2];
+    const editInput = runtime.host.querySelector('#task-edit-input-1');
+    typeInto(editInput, "edited task title for memo demo");
+    await flushScheduledUpdates();
+
+    const memoAfterDraft = runtime.runtime.rootComponent.getHookDebugInfo()[2];
+    assert(
+      memoAfterDraft.recomputeCount === memoAfterStart.recomputeCount,
+      "editing draft should not recompute filtered tasks before save",
+    );
+
+    runtime.host.querySelector('.task-edit-form button[type="submit"]').click();
+    await flushScheduledUpdates();
+
+    const memoAfterSave = runtime.runtime.rootComponent.getHookDebugInfo()[2];
+    const titles = getTaskTitles(runtime.host);
+
+    assert(
+      memoAfterSave.recomputeCount === memoAfterDraft.recomputeCount + 1,
+      "saving an edit should recompute filtered tasks",
+    );
+    assert(titles[0] === "edited task title for memo demo", "edited title should be rendered");
+  } finally {
+    runtime.cleanup();
+  }
+});
+
 await runTest("memoized filtered list recomputes only when dependencies change", async () => {
   const runtime = createMountedApp();
 
