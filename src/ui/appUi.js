@@ -1,19 +1,18 @@
 /**
- * 역할:
- * - 루트 App과 props-only 자식 컴포넌트를 정의합니다.
- * - 브라우저 우측 inspector 패널 렌더링도 함께 맡아, 과제 발표 시 한 파일에서 UI 구조를 읽을 수 있게 합니다.
+ * 이 파일은 데모 화면의 왼쪽 "서비스 대시보드" 영역을 구성합니다.
+ * 루트 App이 모든 state를 들고 있고, 아래 자식 컴포넌트들은 props만 받아 화면을 그립니다.
+ * 오른쪽 inspector 패널에 들어갈 텍스트도 여기서 만들어 줍니다.
  */
 
 import { renderChild } from "../core/component.js";
 import { useEffect, useMemo, useState } from "../core/hooks.js";
 import { h } from "../core/vdom.js";
-import { frameworkHighlights } from "../sampleMarkup.js";
 import { FILTER_OPTIONS } from "../state/store.js";
 
 const FILTER_LABELS = {
-  all: "전체",
+  all: "전체 큐",
   active: "진행 중",
-  completed: "완료",
+  completed: "완료됨",
 };
 
 export function App({ store }) {
@@ -39,23 +38,23 @@ export function App({ store }) {
     }
 
     const previousTitle = document.title;
-    document.title = `${stats.remaining}개 남음 | Week5 Mini React`;
+    document.title = `${stats.remaining} open jobs | Mini React Ops Console`;
 
     return () => {
       document.title = previousTitle;
     };
   }, [stats.remaining, stats.total]);
 
-  return h("div", { class: "task-app" }, [
-    renderChild(Header, {
-      total: stats.total,
-      remaining: stats.remaining,
-      visibleCount: stats.visibleCount,
-      activeFilter: state.filter,
+  return h("div", { class: "ops-dashboard" }, [
+    renderChild(WorkspaceHeader, {
+      stats,
+      filter: state.filter,
+      lastAction: state.lastAction,
+      stateKeyCount: Object.keys(state).length,
     }),
 
-    h("div", { class: "task-grid" }, [
-      h("section", { class: "task-card task-card--main" }, [
+    h("section", { class: "workspace-card workspace-card--primary" }, [
+      h("div", { class: "control-grid" }, [
         renderChild(TaskInput, {
           draftTitle: state.draftTitle,
           onInput: actions.handleDraftInput,
@@ -66,28 +65,23 @@ export function App({ store }) {
           onInput: actions.handleSearchInput,
           onClear: actions.handleClearSearch,
         }),
-        renderChild(FilterTabs, {
-          activeFilter: state.filter,
-          stats,
-          onSelect: actions.handleFilterSelect,
-        }),
-        renderChild(TaskList, {
-          tasks: filteredTasks,
-          search: state.search,
-          onToggle: actions.handleTaskToggle,
-          onRemove: actions.handleTaskRemove,
-        }),
       ]),
-
-      h("aside", { class: "task-card task-card--side" }, [
-        renderChild(StatsPanel, {
-          stats,
-          activeFilter: state.filter,
-          search: state.search,
-        }),
-        renderChild(FrameworkPanel, {}),
-      ]),
+      renderChild(FilterTabs, {
+        activeFilter: state.filter,
+        stats,
+        onSelect: actions.handleFilterSelect,
+      }),
     ]),
+
+    renderChild(TaskList, {
+      tasks: filteredTasks,
+      search: state.search,
+      onToggle: actions.handleTaskToggle,
+      onRemove: actions.handleTaskRemove,
+      onFocusRecent: actions.handleRecentTaskFocus,
+      activeFilter: state.filter,
+      recentTaskId: state.recentTaskId,
+    }),
   ]);
 }
 
@@ -124,41 +118,47 @@ export function renderRuntimeInspector(elements, commit) {
   elements.changeCount.textContent = String(commit.changeCount ?? 0);
   elements.completedCount.textContent = String(completedCount);
   elements.memoCacheHits.textContent = String(memoCacheHits);
-  elements.summary.textContent = formatSummary(commit.changeSummary);
-  elements.stateSnapshot.textContent = JSON.stringify(compactState(commit.stateSnapshot), null, 2);
-  elements.hookSnapshot.textContent = JSON.stringify(commit.hooks ?? [], null, 2);
-  elements.changeLog.textContent =
-    commit.changes?.length > 0
-      ? JSON.stringify(commit.changes, null, 2)
-      : "// 마지막 렌더에서 실제 DOM patch가 필요하지 않았습니다.";
+  elements.summary.textContent = formatSummary(commit);
+  elements.stateSnapshot.textContent = formatStateSnapshot(commit.stateSnapshot);
+  elements.hookSnapshot.textContent = formatHookSnapshot(commit.hooks ?? []);
+  elements.changeLog.textContent = formatChangeLog(commit);
 }
 
-function Header({ total, remaining, visibleCount, activeFilter }) {
-  return h("header", { class: "task-hero" }, [
-    h("div", { class: "task-hero__copy" }, [
-      h("p", { class: "eyebrow" }, "Week 5 · React-like Mini Framework"),
-      h("h1", {}, "Task Manager / Todo Dashboard"),
-      h(
-        "p",
-        { class: "hero-copy" },
-        "루트 App이 모든 state와 hooks를 관리하고, 자식 컴포넌트는 props만 받아 렌더링하는 구조입니다.",
-      ),
+function WorkspaceHeader({ stats, filter, lastAction, stateKeyCount }) {
+  return h("section", { class: "workspace-header" }, [
+    h("div", { class: "workspace-header__title" }, [
+      h("p", { class: "section-kicker" }, "Mini React Demo"),
+      h("h1", {}, "Workflow Operations"),
+      h("p", { class: "hero-copy" }, "루트 state, hooks, diff/patch 흐름을 오른쪽 inspector와 함께 확인하는 작업 대시보드입니다."),
     ]),
-    h("div", { class: "hero-badges" }, [
-      h("span", { class: "hero-badge" }, `총 ${total}개`),
-      h("span", { class: "hero-badge hero-badge--accent" }, `남은 일 ${remaining}개`),
-      h("span", { class: "hero-badge" }, `현재 보기 ${FILTER_LABELS[activeFilter]} · ${visibleCount}개`),
+    h("div", { class: "workspace-header__metrics" }, [
+      renderChild(InlineMetric, { label: "Active", value: String(stats.remaining) }),
+      renderChild(InlineMetric, { label: "Resolved", value: String(stats.completed) }),
+      renderChild(InlineMetric, { label: "Visible", value: String(stats.visibleCount) }),
+      renderChild(InlineMetric, { label: "State Keys", value: String(stateKeyCount) }),
     ]),
+    h("div", { class: "workspace-header__meta" }, [
+      h("span", { class: "meta-pill meta-pill--accent" }, `최근 액션 · ${lastAction}`),
+      h("span", { class: "meta-pill" }, `현재 보기 · ${FILTER_LABELS[filter]}`),
+      h("span", { class: "meta-pill" }, `완료율 · ${stats.completionRate}%`),
+    ]),
+  ]);
+}
+
+function InlineMetric({ label, value }) {
+  return h("article", { class: "inline-metric" }, [
+    h("span", {}, label),
+    h("strong", {}, value),
   ]);
 }
 
 function TaskInput({ draftTitle, onInput, onSubmit }) {
   const isDisabled = draftTitle.trim().length === 0;
 
-  return h("section", { class: "composer" }, [
+  return h("section", { class: "service-panel service-panel--compact" }, [
     h("div", { class: "section-head" }, [
-      h("div", {}, [h("p", { class: "section-kicker" }, "Add Task"), h("h2", {}, "새 작업 추가")]),
-      h("span", { class: "section-chip" }, "루트 state 업데이트"),
+      h("div", {}, [h("p", { class: "section-kicker" }, "Create Job"), h("h2", {}, "새 워크아이템 등록")]),
+      h("span", { class: "section-chip section-chip--soft" }, "setState -> scheduler"),
     ]),
     h("form", { class: "composer-form", onSubmit }, [
       h("input", {
@@ -166,7 +166,7 @@ function TaskInput({ draftTitle, onInput, onSubmit }) {
         class: "field-input",
         type: "text",
         value: draftTitle,
-        placeholder: "예: useEffect cleanup 테스트 정리",
+        placeholder: "예: patch 추적 패널 QA 점검",
         onInput,
       }),
       h(
@@ -177,16 +177,16 @@ function TaskInput({ draftTitle, onInput, onSubmit }) {
           type: "submit",
           disabled: isDisabled,
         },
-        "추가",
+        "큐에 추가",
       ),
     ]),
   ]);
 }
 
 function SearchBar({ search, onInput, onClear }) {
-  return h("section", { class: "toolbar-block" }, [
+  return h("section", { class: "service-panel service-panel--compact" }, [
     h("div", { class: "section-head section-head--compact" }, [
-      h("div", {}, [h("p", { class: "section-kicker" }, "Search"), h("h2", {}, "검색")]),
+      h("div", {}, [h("p", { class: "section-kicker" }, "Search"), h("h2", {}, "대상 항목 탐색")]),
       h(
         "button",
         {
@@ -196,7 +196,7 @@ function SearchBar({ search, onInput, onClear }) {
           onClick: onClear,
           disabled: search.length === 0,
         },
-        "초기화",
+        "검색 초기화",
       ),
     ]),
     h("input", {
@@ -204,16 +204,17 @@ function SearchBar({ search, onInput, onClear }) {
       class: "field-input field-input--search",
       type: "search",
       value: search,
-      placeholder: "제목이나 카테고리 검색",
+      placeholder: "이슈 제목, 카테고리, 런타임 키워드 검색",
       onInput,
     }),
   ]);
 }
 
 function FilterTabs({ activeFilter, stats, onSelect }) {
-  return h("section", { class: "toolbar-block" }, [
+  return h("section", { class: "service-panel service-panel--compact" }, [
     h("div", { class: "section-head section-head--compact" }, [
-      h("div", {}, [h("p", { class: "section-kicker" }, "Filter"), h("h2", {}, "상태 필터")]),
+      h("div", {}, [h("p", { class: "section-kicker" }, "Workflow View"), h("h2", {}, "큐 상태 전환")]),
+      h("span", { class: "section-chip section-chip--soft" }, "memo dependency"),
     ]),
     h(
       "div",
@@ -241,113 +242,105 @@ function FilterTabs({ activeFilter, stats, onSelect }) {
   ]);
 }
 
-function TaskList({ tasks, search, onToggle, onRemove }) {
+function TaskList({ tasks, search, onToggle, onRemove, onFocusRecent, activeFilter, recentTaskId }) {
   if (tasks.length === 0) {
-    return renderChild(EmptyState, { search });
+    return renderChild(EmptyState, { search, activeFilter });
   }
 
-  return h("section", { class: "task-list-section" }, [
-    h("div", { class: "section-head section-head--compact" }, [
-      h("div", {}, [h("p", { class: "section-kicker" }, "Tasks"), h("h2", {}, "할 일 목록")]),
-      h("span", { class: "section-chip section-chip--soft" }, "keyed diff 사용"),
+  return h("section", { class: "queue-panel" }, [
+    h("div", { class: "section-head" }, [
+      h("div", {}, [h("p", { class: "section-kicker" }, "Work Queue"), h("h2", {}, "실시간 워크아이템 보드")]),
+      h("span", { class: "section-chip" }, "keyed diff + patch"),
     ]),
     h(
       "ul",
       { class: "task-list" },
-      tasks.map((task) => renderChild(TaskItem, { task, onToggle, onRemove })),
+      tasks.map((task) =>
+        renderChild(TaskItem, {
+          task,
+          onToggle,
+          onRemove,
+          onFocusRecent,
+          isRecent: task.id === recentTaskId,
+        }),
+      ),
     ),
   ]);
 }
 
-function TaskItem({ task, onToggle, onRemove }) {
-  return h("li", { class: task.completed ? "task-item is-complete" : "task-item", "data-key": String(task.id) }, [
-    h("label", { class: "task-check" }, [
-      h("input", {
-        type: "checkbox",
-        checked: task.completed,
-        "data-task-id": String(task.id),
-        onChange: onToggle,
-      }),
-      h("span", { class: "task-check__visual" }, task.completed ? "Done" : "Todo"),
+function TaskItem({ task, onToggle, onRemove, onFocusRecent, isRecent }) {
+  const className = ["task-item", task.completed ? "is-complete" : "", isRecent ? "is-recent" : ""]
+    .filter(Boolean)
+    .join(" ");
+
+  const handleRecentClick = isRecent ? () => onFocusRecent(task.id) : undefined;
+  const handleToggle = (event) => {
+    event.stopPropagation();
+    onToggle(event);
+  };
+  const handleRemove = (event) => {
+    event.stopPropagation();
+    onRemove(event);
+  };
+
+  return h(
+    "li",
+    {
+      class: className,
+      "data-key": String(task.id),
+      onClick: handleRecentClick,
+    },
+    [
+    h("div", { class: "task-item__status" }, [
+      h("div", { class: "status-row" }, [
+        h("span", { class: task.completed ? "status-pill status-pill--done" : "status-pill" }, task.completed ? "Resolved" : "Watching"),
+        isRecent ? h("span", { class: "recent-badge" }, "NEW") : null,
+      ]),
+      h("label", { class: "task-check" }, [
+        h("input", {
+          type: "checkbox",
+          checked: task.completed,
+          "data-task-id": String(task.id),
+          onChange: handleToggle,
+        }),
+        h("span", { class: "task-check__visual" }, task.completed ? "닫힘" : "추적 중"),
+      ]),
     ]),
     h("div", { class: "task-copy" }, [
       h("strong", { class: "task-title" }, task.title),
+      h("p", { class: "task-description" }, buildTaskDescription(task)),
       h("div", { class: "task-meta" }, [
         h("span", { class: "task-tag" }, task.category),
+        h("span", { class: "task-tag task-tag--muted" }, `ID-${task.id}`),
         h("span", { class: "task-tag task-tag--muted" }, task.createdAt),
       ]),
     ]),
-    h(
-      "button",
-      {
-        class: "icon-button",
-        type: "button",
-        "data-task-id": String(task.id),
-        onClick: onRemove,
-      },
-      "삭제",
-    ),
-  ]);
+    h("div", { class: "task-actions" }, [
+      h(
+        "button",
+        {
+          class: "icon-button",
+          type: "button",
+          "data-task-id": String(task.id),
+          onClick: handleRemove,
+        },
+        "보관",
+      ),
+    ]),
+    ],
+  );
 }
 
-function EmptyState({ search }) {
+function EmptyState({ search, activeFilter }) {
   return h("section", { class: "empty-card" }, [
-    h("p", { class: "section-kicker" }, "No Results"),
-    h("h2", {}, "조건에 맞는 작업이 없습니다."),
+    h("p", { class: "section-kicker" }, "Queue Empty"),
+    h("h2", {}, "현재 조건에 맞는 워크아이템이 없습니다."),
     h(
       "p",
       { class: "empty-copy" },
       search
-        ? `검색어 "${search}"와 일치하는 task가 없습니다.`
-        : "필터 결과가 비어 있습니다. 다른 상태 탭을 눌러보세요.",
-    ),
-  ]);
-}
-
-function StatsPanel({ stats, activeFilter, search }) {
-  return h("section", { class: "side-block" }, [
-    h("div", { class: "section-head" }, [
-      h("div", {}, [h("p", { class: "section-kicker" }, "Stats"), h("h2", {}, "진행 현황")]),
-      h("span", { class: "section-chip" }, `필터: ${FILTER_LABELS[activeFilter]}`),
-    ]),
-    h("div", { class: "stats-grid" }, [
-      h("article", { class: "mini-stat" }, [h("span", {}, "전체"), h("strong", {}, String(stats.total))]),
-      h("article", { class: "mini-stat" }, [h("span", {}, "남은 일"), h("strong", {}, String(stats.remaining))]),
-      h("article", { class: "mini-stat" }, [h("span", {}, "완료"), h("strong", {}, String(stats.completed))]),
-      h("article", { class: "mini-stat" }, [h("span", {}, "현재 보기"), h("strong", {}, String(stats.visibleCount))]),
-    ]),
-    h("div", { class: "progress-block" }, [
-      h("div", { class: "progress-head" }, [
-        h("span", {}, "완료율"),
-        h("strong", {}, `${stats.completionRate}%`),
-      ]),
-      h("div", { class: "progress-rail" }, [
-        h("span", {
-          class: "progress-fill",
-          style: { width: `${stats.completionRate}%` },
-        }),
-      ]),
-    ]),
-    h(
-      "p",
-      { class: "side-note" },
-      search
-        ? `검색어 "${search}"가 filteredTasks useMemo의 의존성에 포함됩니다.`
-        : "검색어가 비어 있으면 이전 memo 계산 결과를 재사용할 수 있습니다.",
-    ),
-  ]);
-}
-
-function FrameworkPanel() {
-  return h("section", { class: "side-block side-block--accent" }, [
-    h("div", { class: "section-head" }, [
-      h("div", {}, [h("p", { class: "section-kicker" }, "Framework"), h("h2", {}, "발표 포인트")]),
-      h("span", { class: "section-chip section-chip--soft" }, "Week4 확장"),
-    ]),
-    h(
-      "ul",
-      { class: "note-list" },
-      frameworkHighlights.map((item) => h("li", {}, item)),
+        ? `검색어 "${search}"와 일치하는 항목이 없어 오른쪽 패널의 memo/diff 로그 변화를 확인하기 좋습니다.`
+        : `${FILTER_LABELS[activeFilter]} 조건에서는 표시할 항목이 없습니다. 다른 필터로 전환해 보세요.`,
     ),
   ]);
 }
@@ -358,6 +351,7 @@ function createActions(setState) {
       setState((previousState) => ({
         ...previousState,
         draftTitle: event.target.value,
+        lastAction: "입력 버퍼 업데이트",
       }));
     },
 
@@ -365,6 +359,7 @@ function createActions(setState) {
       setState((previousState) => ({
         ...previousState,
         search: event.target.value,
+        lastAction: `검색어 변경 -> ${event.target.value || "empty"}`,
       }));
     },
 
@@ -372,6 +367,7 @@ function createActions(setState) {
       setState((previousState) => ({
         ...previousState,
         search: "",
+        lastAction: "검색어 초기화",
       }));
     },
 
@@ -390,6 +386,7 @@ function createActions(setState) {
         return {
           ...previousState,
           filter: nextFilter,
+          lastAction: `필터 전환 -> ${nextFilter}`,
         };
       });
     },
@@ -417,6 +414,8 @@ function createActions(setState) {
           draftTitle: "",
           nextId: previousState.nextId + 1,
           tasks: [nextTask, ...previousState.tasks],
+          lastAction: `워크아이템 생성 -> ${title}`,
+          recentTaskId: nextTask.id,
         };
       });
     },
@@ -428,12 +427,20 @@ function createActions(setState) {
         return;
       }
 
-      setState((previousState) => ({
-        ...previousState,
-        tasks: previousState.tasks.map((task) =>
-          task.id === taskId ? { ...task, completed: !task.completed } : task,
-        ),
-      }));
+      setState((previousState) => {
+        const target = previousState.tasks.find((task) => task.id === taskId);
+
+        return {
+          ...previousState,
+          tasks: previousState.tasks.map((task) =>
+            task.id === taskId ? { ...task, completed: !task.completed } : task,
+          ),
+          lastAction: target
+            ? `상태 토글 -> ${target.title}`
+            : `상태 토글 -> ${taskId}`,
+          recentTaskId: previousState.recentTaskId === taskId ? null : previousState.recentTaskId,
+        };
+      });
     },
 
     handleTaskRemove(event) {
@@ -443,10 +450,32 @@ function createActions(setState) {
         return;
       }
 
-      setState((previousState) => ({
-        ...previousState,
-        tasks: previousState.tasks.filter((task) => task.id !== taskId),
-      }));
+      setState((previousState) => {
+        const target = previousState.tasks.find((task) => task.id === taskId);
+
+        return {
+          ...previousState,
+          tasks: previousState.tasks.filter((task) => task.id !== taskId),
+          lastAction: target
+            ? `워크아이템 보관 -> ${target.title}`
+            : `워크아이템 보관 -> ${taskId}`,
+          recentTaskId: previousState.recentTaskId === taskId ? null : previousState.recentTaskId,
+        };
+      });
+    },
+
+    handleRecentTaskFocus(taskId) {
+      setState((previousState) => {
+        if (previousState.recentTaskId !== taskId) {
+          return previousState;
+        }
+
+        return {
+          ...previousState,
+          recentTaskId: null,
+          lastAction: `신규 강조 해제 -> ${taskId}`,
+        };
+      });
     },
   };
 }
@@ -489,10 +518,30 @@ function classifyTask(title) {
   }
 
   if (/patch|diff|dom/i.test(title)) {
-    return "Core";
+    return "Runtime";
+  }
+
+  if (/render|effect|state/i.test(title)) {
+    return "Engine";
   }
 
   return "UI";
+}
+
+function buildTaskDescription(task) {
+  if (task.category === "Hooks") {
+    return "Hook 캐시, effect, 상태 보존 흐름을 시연하는 워크아이템입니다.";
+  }
+
+  if (task.category === "Runtime") {
+    return "Virtual DOM diff/patch 파이프라인에서 변경 로그가 잘 보이는 항목입니다.";
+  }
+
+  if (task.category === "Engine") {
+    return "루트 state와 렌더 사이클을 설명하기 좋은 엔진 중심 항목입니다.";
+  }
+
+  return "사용자 작업 흐름과 UI 상태 전환을 함께 보여주는 대시보드 항목입니다.";
 }
 
 function compactState(state) {
@@ -505,6 +554,8 @@ function compactState(state) {
     search: state.search,
     filter: state.filter,
     nextId: state.nextId,
+    lastAction: state.lastAction,
+    recentTaskId: state.recentTaskId,
     tasks: state.tasks?.map((task) => ({
       id: task.id,
       title: task.title,
@@ -514,14 +565,72 @@ function compactState(state) {
   };
 }
 
-function formatSummary(changeSummary) {
+function formatSummary(commit) {
+  const changeSummary = commit.changeSummary;
+  const actionLabel = commit.stateSnapshot?.lastAction ?? "초기 렌더";
+
   if (!changeSummary || changeSummary.total === 0) {
-    return "마지막 렌더에서는 변경된 DOM 노드가 없었습니다.";
+    return `최근 액션 "${actionLabel}" 이후 실제 DOM patch는 없었습니다.`;
   }
 
   const byType = Object.entries(changeSummary.byType ?? {})
     .map(([type, count]) => `${type}: ${count}`)
     .join(" / ");
 
-  return `총 ${changeSummary.total}개의 변경을 patch했습니다. (${byType})`;
+  return `최근 액션 "${actionLabel}" -> 총 ${changeSummary.total}개의 DOM 변경이 반영되었습니다. (${byType})`;
+}
+
+function formatStateSnapshot(state) {
+  return JSON.stringify(compactState(state), null, 2);
+}
+
+function formatHookSnapshot(hooks) {
+  const header = [
+    "// hook order",
+    "// [0] useState(root state)",
+    "// [1] useMemo(action map)",
+    "// [2] useMemo(filtered tasks)",
+    "// [3] useMemo(stats)",
+    "// [4] useEffect(localStorage persist)",
+    "// [5] useEffect(document.title sync)",
+    "",
+  ].join("\n");
+
+  return `${header}${JSON.stringify(hooks, null, 2)}`;
+}
+
+function formatChangeLog(commit) {
+  const actionLabel = commit.stateSnapshot?.lastAction ?? "초기 렌더";
+  const lead = inferChangedArea(commit.changes ?? []);
+  const summaryLines = [
+    `// recent action: ${actionLabel}`,
+    `// inferred target: ${lead}`,
+    `// render count: ${commit.renderCount ?? 0}`,
+    `// patch count: ${commit.changeCount ?? 0}`,
+    "",
+  ].join("\n");
+
+  if (!commit.changes?.length) {
+    return `${summaryLines}// 마지막 렌더에서는 patch 대상이 없었습니다.`;
+  }
+
+  return `${summaryLines}${JSON.stringify(commit.changes, null, 2)}`;
+}
+
+function inferChangedArea(changes) {
+  const serialized = JSON.stringify(changes);
+
+  if (serialized.includes("value") || serialized.includes("draftTitle")) {
+    return "입력 컨트롤 또는 검색 필드";
+  }
+
+  if (serialized.includes("checked") || serialized.includes("is-complete")) {
+    return "워크아이템 상태 토글 영역";
+  }
+
+  if (serialized.includes("task-item") || serialized.includes("CREATE_NODE")) {
+    return "워크아이템 리스트";
+  }
+
+  return "레이아웃 또는 메타 정보";
 }

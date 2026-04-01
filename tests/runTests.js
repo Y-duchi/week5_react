@@ -74,7 +74,7 @@ await runTest("Todo app filters completed tasks", async () => {
     const titles = getTaskTitles(runtime.host);
     assert(titles.length === 1, "completed filter should only show completed items from seed data");
     assert(
-      titles[0].includes("FunctionComponent에서 render"),
+      titles[0].includes("Runtime patch rollout"),
       "completed filter should show the completed seed task",
     );
   } finally {

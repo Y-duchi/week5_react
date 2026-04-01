@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "serve": "python3 -m http.server 8000",
+    "serve": "python -m http.server 8000",
     "test": "npm run test:logic",
     "test:logic": "node tests/node-logic-tests.js"
   }

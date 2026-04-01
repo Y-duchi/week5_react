@@ -7,21 +7,21 @@
 export const sampleTasks = [
   {
     id: 1,
-    title: "vdom.js에 h()와 이벤트 속성 동기화 추가",
-    category: "Core",
+    title: "Engine event sync regression triage",
+    category: "Runtime",
     completed: false,
     createdAt: "2026-03-28",
   },
   {
     id: 2,
-    title: "FunctionComponent에서 render -> diff -> patch 흐름 연결",
-    category: "Runtime",
+    title: "Runtime patch rollout approved",
+    category: "Engine",
     completed: true,
     createdAt: "2026-03-29",
   },
   {
     id: 3,
-    title: "useMemo로 검색/필터 결과 캐싱",
+    title: "useMemo cache window tuning",
     category: "Hooks",
     completed: false,
     createdAt: "2026-03-30",
@@ -29,8 +29,8 @@ export const sampleTasks = [
 ];
 
 export const frameworkHighlights = [
-  "루트 App만 hooks를 사용하고, 자식은 props-only pure function으로 유지합니다.",
-  "state 변경은 FunctionComponent.update()를 거쳐 새로운 VDOM을 만들고 diff/patch로 실제 DOM에 반영됩니다.",
-  "useMemo는 filteredTasks, stats, stable action 객체를 캐싱합니다.",
-  "useEffect는 localStorage 저장과 document.title 동기화를 DOM patch 이후에 실행합니다.",
+  "루트 App만 hooks를 사용하고, 자식 패널은 props-only 컴포넌트로 유지합니다.",
+  "state 변경은 scheduler를 거쳐 batching되고, FunctionComponent.update()에서 새로운 VDOM을 계산합니다.",
+  "useMemo는 action map, filtered queue, summary stats를 캐싱합니다.",
+  "useEffect는 DOM patch 이후 localStorage와 document.title을 동기화합니다.",
 ];

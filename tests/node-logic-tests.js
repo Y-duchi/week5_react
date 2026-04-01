@@ -8,6 +8,7 @@ import { diffTrees } from "../src/core/diff.js";
 import { useEffect, useMemo, useState } from "../src/core/hooks.js";
 import { flushScheduledUpdates } from "../src/core/scheduler.js";
 import { h } from "../src/core/vdom.js";
+import { createInitialAppState, createMemoryStorage } from "../src/state/store.js";
 
 const tests = [
   {
@@ -192,6 +193,20 @@ const tests = [
       assert(hasCreate, "keyed insert should be detected");
       assert(hasTextUpdate, "text update should be detected");
       assert(hasMove, "existing keyed node should be moved");
+    },
+  },
+  {
+    name: "stored empty task list should survive reload",
+    async run() {
+      const storage = createMemoryStorage({
+        "virtual-dom:week5:task-manager": JSON.stringify({ tasks: [] }),
+      });
+
+      const initialState = createInitialAppState({ storage });
+
+      assert(Array.isArray(initialState.tasks), "tasks should be an array");
+      assert(initialState.tasks.length === 0, "empty stored task list should not restore seed tasks");
+      assert(initialState.nextId === 1, "empty queue should restart ids from 1");
     },
   },
 ];

@@ -70,7 +70,8 @@ export function createAppStore(options = {}) {
 
 export function createInitialAppState({ storage, storageKey = APP_STORAGE_KEY, seedTasks = sampleTasks } = {}) {
   const storedPayload = readStoredState(storage, storageKey);
-  const tasks = sanitizeTasks(storedPayload?.tasks?.length ? storedPayload.tasks : seedTasks);
+  const hasStoredTasks = Array.isArray(storedPayload?.tasks);
+  const tasks = sanitizeTasks(hasStoredTasks ? storedPayload.tasks : seedTasks);
 
   return {
     tasks,
@@ -78,6 +79,8 @@ export function createInitialAppState({ storage, storageKey = APP_STORAGE_KEY, s
     search: "",
     filter: "all",
     nextId: deriveNextId(tasks),
+    lastAction: "초기 워크큐 로드",
+    recentTaskId: null,
   };
 }
 
@@ -145,6 +148,8 @@ function sanitizeState(state) {
     search: String(state?.search ?? ""),
     filter: FILTER_OPTIONS.includes(state?.filter) ? state.filter : "all",
     nextId: Math.max(Number(state?.nextId ?? 0), deriveNextId(tasks)),
+    lastAction: String(state?.lastAction ?? "상태 동기화"),
+    recentTaskId: Number.isFinite(Number(state?.recentTaskId)) ? Number(state.recentTaskId) : null,
   };
 }
 
